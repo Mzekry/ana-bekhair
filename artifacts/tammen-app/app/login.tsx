@@ -1,6 +1,6 @@
 import { MaterialIcons } from "@expo/vector-icons";
-import * as AuthSession from "expo-auth-session";
 import * as Haptics from "expo-haptics";
+import * as Linking from "expo-linking";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
@@ -121,7 +121,7 @@ export default function LoginScreen() {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     try {
-      const redirectUrl = AuthSession.makeRedirectUri({ scheme: "tammen-app" });
+      const redirectUrl = Linking.createURL("/");
 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
