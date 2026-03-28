@@ -154,7 +154,7 @@ export default function SettingsTab() {
           >
             <Text style={styles.privacyTitle}>أمانك هو أولويتنا</Text>
             <Text style={styles.privacyText}>
-              يتم تشفير كافة بيانات الموقع ولا يتم مشاركتها إلا في حالات الطوارئ القصوى مع الأشخاص الذين حددتهم.
+              بياناتك محمية ومشفرة، ولن يتم مشاركتها إلا في حالات الطوارئ القصوى مع الأشخاص الذين حددتهم.
             </Text>
             <TouchableOpacity style={styles.privacyBtn}>
               <Text style={styles.privacyBtnText}>عرض سياسة الخصوصية</Text>

@@ -82,7 +82,7 @@ export default function LoginScreen() {
           </LinearGradient>
         </View>
         <Text style={styles.title}>أنا بخير</Text>
-        <Text style={styles.subtitle}>أمانك في كل خطوة</Text>
+        <Text style={styles.subtitle}>طمّن أهلك وحبايبك</Text>
       </View>
 
       <View style={styles.formArea}>

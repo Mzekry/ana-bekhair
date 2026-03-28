@@ -19,33 +19,42 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
 import { useApp } from "@/contexts/AppContext";
 
+const COOLDOWN_MINUTES = 10;
+
+function getMinutesAgo(isoString: string): number {
+  return Math.floor((Date.now() - new Date(isoString).getTime()) / 60000);
+}
+
 function formatArabicDate(isoString: string): string {
+  const diff = getMinutesAgo(isoString);
+  if (diff < 1) return "منذ لحظات";
+  if (diff < 60) return `قبل ${diff} دقيقة`;
   const date = new Date(isoString);
-  const now = new Date();
-  const isToday =
-    date.getDate() === now.getDate() &&
-    date.getMonth() === now.getMonth() &&
-    date.getFullYear() === now.getFullYear();
   const hours = date.getHours();
   const minutes = date.getMinutes().toString().padStart(2, "0");
   const period = hours >= 12 ? "مساءً" : "صباحاً";
   const displayHour = hours % 12 === 0 ? 12 : hours % 12;
-  const diff = Math.floor((now.getTime() - date.getTime()) / 60000);
-  if (diff < 60) return `قبل ${diff} دقيقة`;
-  const prefix = isToday ? "اليوم" : "أمس";
-  return `${prefix} ${displayHour}:${minutes} ${period}`;
+  return `${displayHour}:${minutes} ${period}`;
+}
+
+function formatCountdown(secondsLeft: number): string {
+  const m = Math.floor(secondsLeft / 60);
+  const s = secondsLeft % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
 export default function HomeTab() {
   const insets = useSafeAreaInsets();
   const { user, contact, lastCheckIn, recordCheckIn } = useApp();
 
-  const [checkInDone, setCheckInDone] = useState(false);
+  const [secondsLeft, setSecondsLeft] = useState(0);
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const glowAnim = useRef(new Animated.Value(0.6)).current;
 
   const topPad = Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
   const botPad = (Platform.OS === "web" ? 84 : 72) + Math.max(insets.bottom, 0) + 16;
+
+  const cooldownActive = secondsLeft > 0;
 
   useEffect(() => {
     Animated.loop(
@@ -56,15 +65,33 @@ export default function HomeTab() {
     ).start();
   }, []);
 
+  useEffect(() => {
+    function computeSecondsLeft() {
+      if (!lastCheckIn) return 0;
+      const elapsed = Math.floor((Date.now() - new Date(lastCheckIn).getTime()) / 1000);
+      const cooldownSecs = COOLDOWN_MINUTES * 60;
+      return Math.max(0, cooldownSecs - elapsed);
+    }
+
+    setSecondsLeft(computeSecondsLeft());
+
+    const interval = setInterval(() => {
+      const remaining = computeSecondsLeft();
+      setSecondsLeft(remaining);
+      if (remaining === 0) clearInterval(interval);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [lastCheckIn]);
+
   const handleCheckIn = async () => {
+    if (cooldownActive) return;
     await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     Animated.sequence([
       Animated.timing(scaleAnim, { toValue: 0.9, duration: 80, useNativeDriver: true }),
       Animated.spring(scaleAnim, { toValue: 1, friction: 4, useNativeDriver: true }),
     ]).start();
     await recordCheckIn();
-    setCheckInDone(true);
-    setTimeout(() => setCheckInDone(false), 3000);
   };
 
   const handleCall = async () => {
@@ -97,18 +124,14 @@ export default function HomeTab() {
 
   return (
     <View style={[styles.container, { backgroundColor: Colors.surface }]}>
-      <View
-        style={[
-          styles.header,
-          { paddingTop: topPad + 8 },
-        ]}
-      >
-        <TouchableOpacity style={styles.profileAvatar} onPress={() => router.push("/(tabs)/settings")}>
+      <View style={[styles.header, { paddingTop: topPad + 8 }]}>
+        <TouchableOpacity
+          style={styles.profileAvatar}
+          onPress={() => router.push("/(tabs)/settings")}
+        >
           <MaterialIcons name="account-circle" size={40} color={Colors.primary} />
         </TouchableOpacity>
-        <View>
-          <Text style={styles.appName}>أنا بخير</Text>
-        </View>
+        <Text style={styles.appName}>أنا بخير</Text>
         <TouchableOpacity style={styles.menuBtn}>
           <MaterialIcons name="menu" size={26} color={Colors.primaryContainer} />
         </TouchableOpacity>
@@ -125,37 +148,54 @@ export default function HomeTab() {
         </View>
 
         <View style={styles.checkInSection}>
-          <Animated.View
-            style={[
-              styles.glowRing,
-              { opacity: glowAnim },
-            ]}
-          />
+          <Animated.View style={[styles.glowRing, { opacity: glowAnim }]} />
+
           <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
             <Pressable
-              style={({ pressed }) => [
+              style={[
                 styles.checkInBtn,
-                pressed && { opacity: 0.9 },
+                cooldownActive && styles.checkInBtnDisabled,
               ]}
               onPress={handleCheckIn}
+              disabled={cooldownActive}
               testID="check-in-button"
             >
               <MaterialIcons
-                name={checkInDone ? "check-circle" : "check-circle"}
+                name="check-circle"
                 size={64}
-                color="#fff"
+                color={cooldownActive ? "rgba(255,255,255,0.6)" : "#fff"}
                 style={{ marginBottom: 8 }}
               />
-              <Text style={styles.checkInText}>أنا بخير</Text>
+              {cooldownActive ? (
+                <>
+                  <Text style={[styles.checkInText, styles.checkInTextDisabled]}>
+                    {formatCountdown(secondsLeft)}
+                  </Text>
+                  <Text style={styles.cooldownLabel}>انتظر قليلاً</Text>
+                </>
+              ) : (
+                <Text style={styles.checkInText}>أنا بخير</Text>
+              )}
             </Pressable>
           </Animated.View>
 
           <View style={styles.statusRow}>
-            <View style={styles.statusDot} />
-            <Text style={styles.statusText}>
-              {checkInDone ? "تم التحديث بنجاح!" : "النظام يعمل بشكل طبيعي"}
+            <View
+              style={[
+                styles.statusDot,
+                cooldownActive && { backgroundColor: Colors.secondary },
+              ]}
+            />
+            <Text
+              style={[
+                styles.statusText,
+                cooldownActive && { color: Colors.secondary },
+              ]}
+            >
+              {cooldownActive ? "سُجِّل حضورك بنجاح ✓" : "النظام يعمل بشكل طبيعي"}
             </Text>
           </View>
+
           {lastCheckIn ? (
             <Text style={styles.lastCheckIn}>
               آخر تحديث: {formatArabicDate(lastCheckIn)}
@@ -163,6 +203,13 @@ export default function HomeTab() {
           ) : (
             <Text style={styles.lastCheckIn}>لم تُسجّل حضورك بعد</Text>
           )}
+
+          <View style={styles.footerNote}>
+            <MaterialIcons name="info-outline" size={15} color={Colors.onSurfaceVariant} />
+            <Text style={styles.footerNoteText}>
+              سنُخطر جهة الطوارئ في حال لم تُسجّل حضورك في الوقت المحدد يومياً
+            </Text>
+          </View>
         </View>
 
         <TouchableOpacity
@@ -200,9 +247,7 @@ export default function HomeTab() {
 
               <View style={styles.contactAvatarWrap}>
                 <View style={styles.contactAvatarBg}>
-                  <Text style={styles.contactInitial}>
-                    {contact.name.charAt(0)}
-                  </Text>
+                  <Text style={styles.contactInitial}>{contact.name.charAt(0)}</Text>
                 </View>
                 <View style={styles.verifiedBadge}>
                   <MaterialIcons name="verified-user" size={12} color="#fff" />
@@ -226,9 +271,7 @@ export default function HomeTab() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
   header: {
     flexDirection: "row-reverse",
     justifyContent: "space-between",
@@ -269,9 +312,7 @@ const styles = StyleSheet.create({
     gap: 28,
     paddingTop: 20,
   },
-  greetSection: {
-    gap: 4,
-  },
+  greetSection: { gap: 4 },
   greetName: {
     fontSize: 30,
     fontFamily: "Tajawal_700Bold",
@@ -287,19 +328,19 @@ const styles = StyleSheet.create({
   checkInSection: {
     alignItems: "center",
     paddingVertical: 12,
-    gap: 16,
+    gap: 14,
   },
   glowRing: {
     position: "absolute",
-    width: 320,
-    height: 320,
-    borderRadius: 160,
+    width: 310,
+    height: 310,
+    borderRadius: 155,
     backgroundColor: "rgba(0,121,107,0.1)",
   },
   checkInBtn: {
-    width: 260,
-    height: 260,
-    borderRadius: 130,
+    width: 250,
+    height: 250,
+    borderRadius: 125,
     backgroundColor: Colors.primary,
     alignItems: "center",
     justifyContent: "center",
@@ -311,12 +352,25 @@ const styles = StyleSheet.create({
     borderWidth: 8,
     borderColor: "rgba(0,121,107,0.08)",
   },
+  checkInBtnDisabled: {
+    backgroundColor: Colors.onSurfaceVariant,
+    shadowOpacity: 0.1,
+  },
   checkInText: {
     color: "#fff",
-    fontSize: 42,
+    fontSize: 38,
     fontFamily: "Tajawal_800ExtraBold",
     textAlign: "center",
     letterSpacing: 1,
+  },
+  checkInTextDisabled: {
+    fontSize: 32,
+  },
+  cooldownLabel: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 14,
+    fontFamily: "Tajawal_400Regular",
+    marginTop: 4,
   },
   statusRow: {
     flexDirection: "row-reverse",
@@ -340,6 +394,24 @@ const styles = StyleSheet.create({
     color: Colors.onSurfaceVariant,
     textAlign: "center",
   },
+  footerNote: {
+    flexDirection: "row-reverse",
+    alignItems: "flex-start",
+    gap: 8,
+    backgroundColor: Colors.surfaceContainerLow,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    maxWidth: 340,
+  },
+  footerNoteText: {
+    flex: 1,
+    fontSize: 12,
+    fontFamily: "Tajawal_400Regular",
+    color: Colors.onSurfaceVariant,
+    textAlign: "right",
+    lineHeight: 18,
+  },
   emergencyBtn: {
     backgroundColor: Colors.error,
     borderRadius: 24,
@@ -360,9 +432,7 @@ const styles = StyleSheet.create({
     fontFamily: "Tajawal_700Bold",
     textAlign: "center",
   },
-  contactSection: {
-    gap: 16,
-  },
+  contactSection: { gap: 16 },
   contactSectionHeader: {
     flexDirection: "row-reverse",
     justifyContent: "space-between",
@@ -392,9 +462,7 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 2,
   },
-  contactAvatarWrap: {
-    position: "relative",
-  },
+  contactAvatarWrap: { position: "relative" },
   contactAvatarBg: {
     width: 72,
     height: 72,

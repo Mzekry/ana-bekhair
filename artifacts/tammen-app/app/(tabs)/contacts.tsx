@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  KeyboardAvoidingView,
   Modal,
   Platform,
   ScrollView,
@@ -23,21 +24,25 @@ import Colors from "@/constants/colors";
 import { WatcherContact, useApp } from "@/contexts/AppContext";
 
 const PHONE_REGEX = /^\+[0-9]{10,15}$/;
-const COUNTRY_CODES = ["+966", "+971", "+965", "+974", "+968", "+20", "+962", "+963", "+964"];
+const COUNTRY_CODES = ["+966", "+971", "+965", "+974", "+968", "+20", "+962", "+963", "+964", "+1"];
 
 export default function ContactsTab() {
   const insets = useSafeAreaInsets();
   const { contact, setContact } = useApp();
 
   const [name, setName] = useState(contact?.name ?? "");
-  const [phone, setPhone] = useState(
-    contact?.phone
-      ? contact.phone.replace(/^\+[0-9]{2,4}/, "")
-      : ""
-  );
-  const [countryCode, setCountryCode] = useState("+966");
+  const [phone, setPhone] = useState(() => {
+    if (!contact?.phone) return "";
+    const found = COUNTRY_CODES.find((c) => contact.phone.startsWith(c));
+    return found ? contact.phone.slice(found.length) : contact.phone;
+  });
+  const [countryCode, setCountryCode] = useState(() => {
+    if (!contact?.phone) return "+966";
+    return COUNTRY_CODES.find((c) => contact.phone.startsWith(c)) ?? "+966";
+  });
   const [phoneError, setPhoneError] = useState("");
   const [showContacts, setShowContacts] = useState(false);
+  const [showCodePicker, setShowCodePicker] = useState(false);
   const [contactsList, setContactsList] = useState<Contacts.Contact[]>([]);
   const [loadingContacts, setLoadingContacts] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -112,161 +117,215 @@ export default function ContactsTab() {
   };
 
   return (
-    <View style={[styles.container]}>
-      <View style={[styles.header, { paddingTop: topPad + 8 }]}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <MaterialIcons name="arrow-forward" size={24} color={Colors.primaryContainer} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>أنا بخير</Text>
-        <View style={{ width: 24 }} />
-      </View>
-
-      <ScrollView
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: botPad }]}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.titleSection}>
-          <Text style={styles.title}>إضافة شخص الطوارئ</Text>
-          <Text style={styles.subtitle}>
-            أضف جهة اتصال الطوارئ الرئيسية الخاصة بك لضمان بقائك في أمان تام دائماً.
-          </Text>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
+      <View style={styles.container}>
+        <View style={[styles.header, { paddingTop: topPad + 8 }]}>
+          <View style={{ width: 28 }} />
+          <Text style={styles.headerTitle}>أنا بخير</Text>
+          <View style={{ width: 28 }} />
         </View>
 
-        <View style={styles.choiceGrid}>
-          <TouchableOpacity style={[styles.choiceCard, { backgroundColor: Colors.surfaceContainerLowest }]} activeOpacity={0.8}>
-            <View style={[styles.choiceIcon, { backgroundColor: Colors.primaryFixedDim }]}>
-              <MaterialIcons name="person-add" size={24} color={Colors.primaryContainer} />
-            </View>
-            <Text style={styles.choiceLabel}>إضافة يدوياً</Text>
-          </TouchableOpacity>
+        <ScrollView
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: botPad }]}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.titleSection}>
+            <Text style={styles.title}>إضافة شخص الطوارئ</Text>
+            <Text style={styles.subtitle}>
+              أضف جهة اتصال الطوارئ لضمان بقائك في أمان تام دائماً.
+            </Text>
+          </View>
 
           <TouchableOpacity
-            style={[styles.choiceCard, { backgroundColor: Colors.surfaceContainerLow }]}
+            style={styles.importBtn}
             onPress={handleImportContacts}
             disabled={loadingContacts}
-            activeOpacity={0.8}
-          >
-            {loadingContacts ? (
-              <ActivityIndicator color={Colors.secondary} />
-            ) : (
-              <>
-                <View style={[styles.choiceIcon, { backgroundColor: Colors.secondaryFixedDim }]}>
-                  <MaterialIcons name="contacts" size={24} color={Colors.secondary} />
-                </View>
-                <Text style={styles.choiceLabel}>اختر من جهات الاتصال</Text>
-              </>
-            )}
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.formCard}>
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>اسم شخص الطوارئ</Text>
-            <View style={styles.inputWrapper}>
-              <TextInput
-                style={styles.input}
-                placeholder="أدخل الاسم الكامل"
-                placeholderTextColor={Colors.outline}
-                value={name}
-                onChangeText={setName}
-                textAlign="right"
-              />
-              <MaterialIcons name="person" size={20} color={Colors.outline} />
-            </View>
-          </View>
-
-          <View style={styles.phoneRow}>
-            <View style={styles.phoneInputWrap}>
-              <Text style={styles.label}>رقم الجوال</Text>
-              <View style={[styles.inputWrapper, phoneError ? styles.inputError : null]}>
-                <TextInput
-                  style={[styles.input]}
-                  placeholder="50 000 0000"
-                  placeholderTextColor={Colors.outline}
-                  value={phone}
-                  onChangeText={(t) => { setPhone(t); setPhoneError(""); }}
-                  keyboardType="phone-pad"
-                  textAlign="left"
-                />
-                <MaterialIcons name="call" size={20} color={Colors.outline} />
-              </View>
-            </View>
-            <View style={styles.codeWrap}>
-              <Text style={styles.label}>الرمز</Text>
-              <View style={[styles.inputWrapper]}>
-                <Text style={styles.codeText}>{countryCode}</Text>
-              </View>
-            </View>
-          </View>
-
-          {phoneError ? (
-            <Text style={styles.errorText}>{phoneError}</Text>
-          ) : null}
-
-          <TouchableOpacity
-            style={styles.saveBtn}
-            onPress={handleSave}
-            disabled={isSaving}
             activeOpacity={0.85}
           >
             <LinearGradient
-              colors={[Colors.primary, Colors.primaryContainer]}
-              style={styles.saveBtnGrad}
+              colors={[Colors.secondary, "#004a8c"]}
+              style={styles.importBtnGrad}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
             >
-              {isSaving ? (
+              {loadingContacts ? (
                 <ActivityIndicator color="#fff" />
               ) : (
                 <>
-                  <Text style={styles.saveBtnText}>حفظ شخص الطوارئ</Text>
-                  <MaterialIcons name="favorite" size={22} color="#fff" />
+                  <MaterialIcons name="contacts" size={26} color="#fff" />
+                  <Text style={styles.importBtnText}>اختر من جهات الاتصال</Text>
                 </>
               )}
             </LinearGradient>
           </TouchableOpacity>
-        </View>
 
-        <View style={styles.infoBanner}>
-          <MaterialIcons name="info" size={20} color={Colors.primary} style={{ marginTop: 2 }} />
-          <Text style={styles.infoText}>
-            سيتم إرسال تنبيه فوري لهذا الشخص في حال عدم استجابتك لطلبات التحقق من السلامة أو في حالات الطوارئ.
-          </Text>
-        </View>
-      </ScrollView>
+          <View style={styles.dividerRow}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>أو أدخل يدوياً</Text>
+            <View style={styles.dividerLine} />
+          </View>
 
-      <Modal visible={showContacts} animationType="slide" presentationStyle="pageSheet">
-        <View style={styles.modalContainer}>
-          <View style={[styles.modalHeader, { paddingTop: insets.top + 16 }]}>
-            <Text style={styles.modalTitle}>جهات الاتصال</Text>
-            <TouchableOpacity onPress={() => setShowContacts(false)}>
-              <MaterialIcons name="close" size={24} color={Colors.onSurfaceVariant} />
+          <View style={styles.formCard}>
+            <View style={styles.fieldGroup}>
+              <Text style={styles.label}>اسم شخص الطوارئ</Text>
+              <View style={styles.inputWrapper}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="أدخل الاسم الكامل"
+                  placeholderTextColor={Colors.outline}
+                  value={name}
+                  onChangeText={setName}
+                  textAlign="right"
+                />
+                <MaterialIcons name="person" size={20} color={Colors.outline} />
+              </View>
+            </View>
+
+            <View style={styles.fieldGroup}>
+              <Text style={styles.label}>رقم الجوال</Text>
+              <View style={styles.phoneRow}>
+                <View style={styles.phoneInputWrap}>
+                  <View style={[styles.inputWrapper, phoneError ? styles.inputError : null]}>
+                    <TextInput
+                      style={[styles.input]}
+                      placeholder="500000000"
+                      placeholderTextColor={Colors.outline}
+                      value={phone}
+                      onChangeText={(t) => {
+                        setPhone(t);
+                        setPhoneError("");
+                      }}
+                      keyboardType="phone-pad"
+                      textAlign="left"
+                    />
+                    <MaterialIcons name="call" size={20} color={Colors.outline} />
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  style={styles.codeBtn}
+                  onPress={() => setShowCodePicker(true)}
+                >
+                  <Text style={styles.codeBtnText}>{countryCode}</Text>
+                  <MaterialIcons name="arrow-drop-down" size={18} color={Colors.onSurfaceVariant} />
+                </TouchableOpacity>
+              </View>
+              {phoneError ? (
+                <Text style={styles.errorText}>{phoneError}</Text>
+              ) : null}
+              <Text style={styles.phoneHint}>
+                سيُضاف الرمز الدولي تلقائياً: {countryCode}
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              style={styles.saveBtn}
+              onPress={handleSave}
+              disabled={isSaving}
+              activeOpacity={0.85}
+            >
+              <LinearGradient
+                colors={[Colors.primary, Colors.primaryContainer]}
+                style={styles.saveBtnGrad}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                {isSaving ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <>
+                    <Text style={styles.saveBtnText}>حفظ شخص الطوارئ</Text>
+                    <MaterialIcons name="favorite" size={22} color="#fff" />
+                  </>
+                )}
+              </LinearGradient>
             </TouchableOpacity>
           </View>
-          <FlatList
-            data={contactsList}
-            keyExtractor={(item) => item.id ?? Math.random().toString()}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={styles.contactRow}
-                onPress={() => handleSelectContact(item)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.contactAvatar}>
-                  <Text style={styles.contactInitial}>{item.name?.charAt(0) ?? "?"}</Text>
-                </View>
-                <View style={styles.contactInfo}>
-                  <Text style={styles.contactName}>{item.name}</Text>
-                  {item.phoneNumbers?.[0]?.number ? (
-                    <Text style={styles.contactPhone}>{item.phoneNumbers[0].number}</Text>
-                  ) : null}
-                </View>
+
+          <View style={styles.infoBanner}>
+            <MaterialIcons name="info" size={20} color={Colors.primary} style={{ marginTop: 2 }} />
+            <Text style={styles.infoText}>
+              سيتم إرسال تنبيه فوري لهذا الشخص في حال عدم استجابتك لطلبات التحقق من السلامة أو في حالات الطوارئ.
+            </Text>
+          </View>
+        </ScrollView>
+
+        <Modal visible={showContacts} animationType="slide" presentationStyle="pageSheet">
+          <View style={styles.modalContainer}>
+            <View style={[styles.modalHeader, { paddingTop: insets.top + 16 }]}>
+              <Text style={styles.modalTitle}>جهات الاتصال</Text>
+              <TouchableOpacity onPress={() => setShowContacts(false)}>
+                <MaterialIcons name="close" size={24} color={Colors.onSurfaceVariant} />
               </TouchableOpacity>
-            )}
-          />
-        </View>
-      </Modal>
-    </View>
+            </View>
+            <FlatList
+              data={contactsList}
+              keyExtractor={(item) => item.id ?? Math.random().toString()}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.contactRow}
+                  onPress={() => handleSelectContact(item)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.contactAvatar}>
+                    <Text style={styles.contactInitial}>{item.name?.charAt(0) ?? "?"}</Text>
+                  </View>
+                  <View style={styles.contactInfo}>
+                    <Text style={styles.contactName}>{item.name}</Text>
+                    {item.phoneNumbers?.[0]?.number ? (
+                      <Text style={styles.contactPhone}>{item.phoneNumbers[0].number}</Text>
+                    ) : null}
+                  </View>
+                </TouchableOpacity>
+              )}
+              ListEmptyComponent={
+                <View style={styles.emptyContacts}>
+                  <MaterialIcons name="contacts" size={40} color={Colors.outline} />
+                  <Text style={styles.emptyText}>لا توجد جهات اتصال</Text>
+                </View>
+              }
+            />
+          </View>
+        </Modal>
+
+        <Modal visible={showCodePicker} animationType="slide" presentationStyle="pageSheet">
+          <View style={styles.modalContainer}>
+            <View style={[styles.modalHeader, { paddingTop: insets.top + 16 }]}>
+              <Text style={styles.modalTitle}>اختر الرمز الدولي</Text>
+              <TouchableOpacity onPress={() => setShowCodePicker(false)}>
+                <MaterialIcons name="close" size={24} color={Colors.onSurfaceVariant} />
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={COUNTRY_CODES}
+              keyExtractor={(item) => item}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[
+                    styles.contactRow,
+                    item === countryCode && styles.contactRowSelected,
+                  ]}
+                  onPress={() => {
+                    setCountryCode(item);
+                    setShowCodePicker(false);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.contactName}>{item}</Text>
+                  {item === countryCode && (
+                    <MaterialIcons name="check" size={20} color={Colors.primary} />
+                  )}
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </Modal>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -296,76 +355,76 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 20,
     paddingTop: 24,
-    gap: 24,
+    gap: 20,
   },
-  titleSection: {
-    gap: 10,
-  },
+  titleSection: { gap: 8 },
   title: {
-    fontSize: 30,
+    fontSize: 28,
     fontFamily: "Tajawal_800ExtraBold",
     color: Colors.onSurface,
     textAlign: "right",
-    lineHeight: 42,
+    lineHeight: 40,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontFamily: "Tajawal_400Regular",
     color: Colors.onSurfaceVariant,
     textAlign: "right",
-    lineHeight: 24,
+    lineHeight: 22,
   },
-  choiceGrid: {
-    flexDirection: "row-reverse",
-    gap: 14,
+  importBtn: {
+    borderRadius: 18,
+    overflow: "hidden",
+    shadowColor: Colors.secondary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.28,
+    shadowRadius: 14,
+    elevation: 7,
   },
-  choiceCard: {
-    flex: 1,
-    borderRadius: 16,
-    padding: 18,
-    alignItems: "flex-end",
-    gap: 16,
-    minHeight: 130,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-    justifyContent: "space-between",
-  },
-  choiceIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
+  importBtnGrad: {
+    paddingVertical: 20,
     alignItems: "center",
     justifyContent: "center",
+    flexDirection: "row-reverse",
+    gap: 12,
   },
-  choiceLabel: {
-    fontSize: 15,
+  importBtnText: {
+    color: "#fff",
+    fontSize: 18,
     fontFamily: "Tajawal_700Bold",
-    color: Colors.onSurface,
-    textAlign: "right",
+  },
+  dividerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: Colors.surfaceContainerHighest,
+  },
+  dividerText: {
+    fontSize: 13,
+    fontFamily: "Tajawal_500Medium",
+    color: Colors.outline,
   },
   formCard: {
     backgroundColor: Colors.surfaceContainerLow,
     borderRadius: 20,
-    padding: 24,
-    gap: 20,
+    padding: 20,
+    gap: 18,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
   },
-  fieldGroup: {
-    gap: 6,
-  },
+  fieldGroup: { gap: 6 },
   label: {
     fontSize: 14,
     fontFamily: "Tajawal_700Bold",
     color: Colors.onSurfaceVariant,
     textAlign: "right",
-    marginBottom: 4,
   },
   inputWrapper: {
     backgroundColor: Colors.surfaceContainerHighest,
@@ -388,21 +447,29 @@ const styles = StyleSheet.create({
   },
   phoneRow: {
     flexDirection: "row-reverse",
-    gap: 12,
+    gap: 10,
+    alignItems: "stretch",
   },
-  phoneInputWrap: {
-    flex: 1,
+  phoneInputWrap: { flex: 1 },
+  codeBtn: {
+    backgroundColor: Colors.surfaceContainerHighest,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 2,
+    minWidth: 80,
   },
-  codeWrap: {
-    width: 80,
-  },
-  codeText: {
-    fontSize: 16,
-    fontFamily: "Tajawal_500Medium",
+  codeBtnText: {
+    fontSize: 15,
+    fontFamily: "Tajawal_700Bold",
     color: Colors.onSurface,
-    textAlign: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 4,
+  },
+  phoneHint: {
+    fontSize: 12,
+    fontFamily: "Tajawal_400Regular",
+    color: Colors.outline,
+    textAlign: "right",
   },
   errorText: {
     fontSize: 13,
@@ -418,6 +485,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 12,
     elevation: 6,
+    marginTop: 4,
   },
   saveBtnGrad: {
     paddingVertical: 18,
@@ -474,6 +542,9 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.surfaceContainerHighest,
     gap: 14,
   },
+  contactRowSelected: {
+    backgroundColor: Colors.primaryFixedDim + "33",
+  },
   contactAvatar: {
     width: 46,
     height: 46,
@@ -493,6 +564,7 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   contactName: {
+    flex: 1,
     fontSize: 16,
     fontFamily: "Tajawal_500Medium",
     color: Colors.onSurface,
@@ -502,5 +574,15 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: "Tajawal_400Regular",
     color: Colors.onSurfaceVariant,
+  },
+  emptyContacts: {
+    alignItems: "center",
+    paddingTop: 80,
+    gap: 16,
+  },
+  emptyText: {
+    fontSize: 16,
+    fontFamily: "Tajawal_400Regular",
+    color: Colors.outline,
   },
 });

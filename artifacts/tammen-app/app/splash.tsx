@@ -103,7 +103,7 @@ export default function SplashAnimationScreen() {
 
         <Animated.View style={{ opacity: fadeAnim, alignItems: "center", gap: 8 }}>
           <Text style={styles.title}>أنا بخير</Text>
-          <Text style={styles.subtitle}>أمانك في كل خطوة</Text>
+          <Text style={styles.subtitle}>طمّن أهلك وحبايبك</Text>
         </Animated.View>
 
         <View style={styles.loadingTrack}>

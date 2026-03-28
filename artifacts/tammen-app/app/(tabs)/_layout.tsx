@@ -17,25 +17,20 @@ function TabIcon({
   badge?: boolean;
 }) {
   return (
-    <View
-      style={[
-        styles.tabItem,
-        focused && styles.tabItemActive,
-      ]}
-    >
+    <View style={[styles.tabItem, focused && styles.tabItemActive]}>
       <View style={styles.iconWrap}>
         <MaterialIcons
           name={icon}
-          size={24}
+          size={22}
           color={focused ? "#fff" : Colors.outline}
         />
         {!focused && badge && <View style={styles.badgeDot} />}
       </View>
       <Text
-        style={[
-          styles.tabLabel,
-          { color: focused ? "#fff" : Colors.outline },
-        ]}
+        style={[styles.tabLabel, { color: focused ? "#fff" : Colors.outline }]}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.65}
       >
         {label}
       </Text>
@@ -53,8 +48,8 @@ export default function TabLayout() {
           bottom: 0,
           left: 0,
           right: 0,
-          height: Platform.OS === "web" ? 84 : 72,
-          backgroundColor: "rgba(255,255,255,0.85)",
+          height: Platform.OS === "web" ? 88 : 76,
+          backgroundColor: "rgba(255,255,255,0.92)",
           borderTopWidth: 0,
           elevation: 0,
           shadowColor: Colors.primary,
@@ -63,6 +58,7 @@ export default function TabLayout() {
           shadowRadius: 20,
           borderTopLeftRadius: 28,
           borderTopRightRadius: 28,
+          paddingHorizontal: 4,
         },
         tabBarShowLabel: false,
         tabBarBackground: () => null,
@@ -88,7 +84,7 @@ export default function TabLayout() {
         name="contacts"
         options={{
           tabBarIcon: ({ focused }) => (
-            <TabIcon icon="manage-search" label="جهات الاتصال" focused={focused} />
+            <TabIcon icon="contacts" label="جهات الاتصال" focused={focused} />
           ),
         }}
       />
@@ -108,11 +104,11 @@ const styles = StyleSheet.create({
   tabItem: {
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 14,
+    paddingHorizontal: 10,
     paddingVertical: 8,
-    gap: 4,
+    gap: 3,
     borderRadius: 18,
-    minWidth: 70,
+    width: 82,
   },
   tabItemActive: {
     backgroundColor: Colors.primary,
@@ -121,7 +117,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 8,
     elevation: 4,
-    transform: [{ scale: 1.08 }],
+    transform: [{ scale: 1.06 }],
   },
   iconWrap: {
     position: "relative",
@@ -130,6 +126,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontFamily: "Tajawal_500Medium",
     textAlign: "center",
+    width: 78,
   },
   badgeDot: {
     position: "absolute",
