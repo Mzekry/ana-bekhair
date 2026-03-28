@@ -1,6 +1,7 @@
-import { Feather } from "@expo/vector-icons";
+import { MaterialIcons } from "@expo/vector-icons";
 import * as Contacts from "expo-contacts";
 import * as Haptics from "expo-haptics";
+import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -25,7 +26,6 @@ const PHONE_REGEX = /^\+[0-9]{10,15}$/;
 export default function EditContactScreen() {
   const insets = useSafeAreaInsets();
   const { contact, setContact } = useApp();
-  const colors = Colors.light;
 
   const [name, setName] = useState(contact?.name ?? "");
   const [phone, setPhone] = useState(contact?.phone ?? "");
@@ -35,19 +35,8 @@ export default function EditContactScreen() {
   const [loadingContacts, setLoadingContacts] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  const topPad =
-    Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
-  const botPad =
-    Math.max(insets.bottom, Platform.OS === "web" ? 34 : 0) + 20;
-
-  const validatePhone = (p: string) => {
-    if (!PHONE_REGEX.test(p)) {
-      setPhoneError("رقم الهاتف غير صحيح");
-      return false;
-    }
-    setPhoneError("");
-    return true;
-  };
+  const topPad = Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
+  const botPad = Math.max(insets.bottom, Platform.OS === "web" ? 34 : 0) + 20;
 
   const handleImportContacts = async () => {
     if (Platform.OS === "web") {
@@ -64,10 +53,9 @@ export default function EditContactScreen() {
       const { data } = await Contacts.getContactsAsync({
         fields: [Contacts.Fields.Name, Contacts.Fields.PhoneNumbers],
       });
-      const filtered = data.filter(
-        (c) => c.name && c.phoneNumbers && c.phoneNumbers.length > 0
+      setContactsList(
+        data.filter((c) => c.name && c.phoneNumbers && c.phoneNumbers.length > 0)
       );
-      setContactsList(filtered);
       setShowContacts(true);
     } catch {
       Alert.alert("خطأ", "تعذر تحميل جهات الاتصال");
@@ -76,10 +64,10 @@ export default function EditContactScreen() {
     }
   };
 
-  const handleSelectContact = (contact: Contacts.Contact) => {
-    const rawPhone = contact.phoneNumbers?.[0]?.number ?? "";
+  const handleSelectContact = (c: Contacts.Contact) => {
+    const rawPhone = c.phoneNumbers?.[0]?.number ?? "";
     const cleanPhone = rawPhone.replace(/[\s\-()]/g, "");
-    setName(contact.name ?? "");
+    setName(c.name ?? "");
     setPhone(cleanPhone);
     setPhoneError("");
     setShowContacts(false);
@@ -90,8 +78,10 @@ export default function EditContactScreen() {
       Alert.alert("تنبيه", "يرجى إدخال الاسم");
       return;
     }
-    if (!validatePhone(phone)) return;
-
+    if (!PHONE_REGEX.test(phone)) {
+      setPhoneError("رقم الهاتف غير صحيح (يجب أن يبدأ بـ + ويحتوي على 10-15 رقم)");
+      return;
+    }
     setIsSaving(true);
     await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     try {
@@ -104,186 +94,115 @@ export default function EditContactScreen() {
   };
 
   return (
-    <View
-      style={[
-        styles.container,
-        {
-          backgroundColor: colors.background,
-          paddingTop: topPad + 8,
-          paddingBottom: botPad,
-        },
-      ]}
-    >
+    <View style={[styles.container, { paddingTop: topPad + 8, paddingBottom: botPad }]}>
       <View style={styles.topBar}>
         <View style={{ width: 40 }} />
-        <Text style={[styles.pageTitle, { color: colors.text }]}>
-          تعديل جهة الطوارئ
-        </Text>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={[styles.iconBtn, { backgroundColor: colors.card }]}
-        >
-          <Feather name="x" size={20} color={colors.textSecondary} />
+        <Text style={styles.pageTitle}>تعديل جهة الطوارئ</Text>
+        <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn}>
+          <MaterialIcons name="close" size={22} color={Colors.onSurfaceVariant} />
         </TouchableOpacity>
       </View>
 
       <View style={styles.form}>
-        <View>
-          <Text style={[styles.label, { color: colors.text }]}>الاسم</Text>
-          <View
-            style={[
-              styles.inputWrapper,
-              { borderColor: colors.border, backgroundColor: colors.card },
-            ]}
-          >
+        <View style={styles.fieldGroup}>
+          <Text style={styles.label}>الاسم</Text>
+          <View style={styles.inputWrapper}>
             <TextInput
-              style={[styles.input, { color: colors.text }]}
+              style={styles.input}
               placeholder="اسم الشخص"
-              placeholderTextColor={colors.textMuted}
+              placeholderTextColor={Colors.outline}
               value={name}
               onChangeText={setName}
               textAlign="right"
             />
+            <MaterialIcons name="person" size={20} color={Colors.outline} />
           </View>
         </View>
 
-        <View>
-          <Text style={[styles.label, { color: colors.text }]}>رقم الهاتف</Text>
-          <View
-            style={[
-              styles.inputWrapper,
-              {
-                borderColor: phoneError ? colors.danger : colors.border,
-                backgroundColor: colors.card,
-              },
-            ]}
-          >
+        <View style={styles.fieldGroup}>
+          <Text style={styles.label}>رقم الهاتف</Text>
+          <View style={[styles.inputWrapper, phoneError ? styles.inputError : null]}>
             <TextInput
-              style={[styles.input, { color: colors.text }]}
-              placeholder="+971501234567"
-              placeholderTextColor={colors.textMuted}
+              style={styles.input}
+              placeholder="+966501234567"
+              placeholderTextColor={Colors.outline}
               value={phone}
-              onChangeText={(t) => {
-                setPhone(t);
-                if (phoneError) setPhoneError("");
-              }}
+              onChangeText={(t) => { setPhone(t); if (phoneError) setPhoneError(""); }}
               keyboardType="phone-pad"
               textAlign="right"
             />
+            <MaterialIcons name="call" size={20} color={Colors.outline} />
           </View>
           {phoneError ? (
-            <Text style={[styles.errorText, { color: colors.danger }]}>
-              {phoneError}
-            </Text>
+            <Text style={styles.errorText}>{phoneError}</Text>
           ) : null}
         </View>
 
         <TouchableOpacity
-          style={[
-            styles.outlineBtn,
-            { borderColor: colors.primary, backgroundColor: colors.primaryBg },
-          ]}
+          style={styles.importBtn}
           onPress={handleImportContacts}
           disabled={loadingContacts}
           activeOpacity={0.8}
         >
           {loadingContacts ? (
-            <ActivityIndicator color={colors.primary} size="small" />
+            <ActivityIndicator color={Colors.primary} size="small" />
           ) : (
             <>
-              <Feather name="users" size={18} color={colors.primary} />
-              <Text style={[styles.outlineBtnText, { color: colors.primary }]}>
-                اختيار من جهات الاتصال
-              </Text>
+              <MaterialIcons name="contacts" size={20} color={Colors.primary} />
+              <Text style={styles.importBtnText}>اختيار من جهات الاتصال</Text>
             </>
           )}
         </TouchableOpacity>
       </View>
 
       <TouchableOpacity
-        style={[styles.saveBtn, { backgroundColor: colors.primary }]}
+        style={styles.saveBtn}
         onPress={handleSave}
         disabled={isSaving}
         activeOpacity={0.85}
       >
-        {isSaving ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.saveBtnText}>حفظ التغييرات</Text>
-        )}
+        <LinearGradient
+          colors={[Colors.primary, Colors.primaryContainer]}
+          style={styles.saveBtnGrad}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          {isSaving ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.saveBtnText}>حفظ التغييرات</Text>
+          )}
+        </LinearGradient>
       </TouchableOpacity>
 
       <Modal visible={showContacts} animationType="slide" presentationStyle="pageSheet">
-        <View
-          style={[styles.modalContainer, { backgroundColor: colors.background }]}
-        >
-          <View
-            style={[
-              styles.modalHeader,
-              {
-                borderBottomColor: colors.border,
-                paddingTop: insets.top + 16,
-              },
-            ]}
-          >
-            <Text style={[styles.modalTitle, { color: colors.text }]}>
-              جهات الاتصال
-            </Text>
+        <View style={styles.modalContainer}>
+          <View style={[styles.modalHeader, { paddingTop: insets.top + 16 }]}>
+            <Text style={styles.modalTitle}>جهات الاتصال</Text>
             <TouchableOpacity onPress={() => setShowContacts(false)}>
-              <Feather name="x" size={24} color={colors.textSecondary} />
+              <MaterialIcons name="close" size={24} color={Colors.onSurfaceVariant} />
             </TouchableOpacity>
           </View>
           <FlatList
             data={contactsList}
-            keyExtractor={(item) =>
-              item.id ?? item.name ?? Math.random().toString()
-            }
+            keyExtractor={(item) => item.id ?? Math.random().toString()}
             renderItem={({ item }) => (
               <TouchableOpacity
-                style={[
-                  styles.contactRow,
-                  { borderBottomColor: colors.border },
-                ]}
+                style={styles.contactRow}
                 onPress={() => handleSelectContact(item)}
                 activeOpacity={0.7}
               >
-                <View
-                  style={[
-                    styles.contactAvatar,
-                    { backgroundColor: colors.primaryBg },
-                  ]}
-                >
-                  <Text
-                    style={[styles.contactInitial, { color: colors.primary }]}
-                  >
-                    {item.name?.charAt(0) ?? "?"}
-                  </Text>
+                <View style={styles.contactAvatar}>
+                  <Text style={styles.contactInitial}>{item.name?.charAt(0) ?? "?"}</Text>
                 </View>
                 <View style={styles.contactInfo}>
-                  <Text style={[styles.contactName, { color: colors.text }]}>
-                    {item.name}
-                  </Text>
+                  <Text style={styles.contactName}>{item.name}</Text>
                   {item.phoneNumbers?.[0]?.number ? (
-                    <Text
-                      style={[
-                        styles.contactPhone,
-                        { color: colors.textSecondary },
-                      ]}
-                    >
-                      {item.phoneNumbers[0].number}
-                    </Text>
+                    <Text style={styles.contactPhone}>{item.phoneNumbers[0].number}</Text>
                   ) : null}
                 </View>
               </TouchableOpacity>
             )}
-            ListEmptyComponent={
-              <View style={styles.emptyContacts}>
-                <Feather name="users" size={40} color={colors.textMuted} />
-                <Text style={[styles.emptyText, { color: colors.textMuted }]}>
-                  لا توجد جهات اتصال
-                </Text>
-              </View>
-            }
           />
         </View>
       </Modal>
@@ -294,6 +213,7 @@ export default function EditContactScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: Colors.background,
     paddingHorizontal: 24,
     justifyContent: "space-between",
   },
@@ -305,71 +225,97 @@ const styles = StyleSheet.create({
   },
   pageTitle: {
     fontSize: 20,
-    fontFamily: "Inter_700Bold",
+    fontFamily: "Tajawal_700Bold",
+    color: Colors.onSurface,
     textAlign: "center",
   },
-  iconBtn: {
+  closeBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: Colors.surfaceContainerLow,
   },
   form: {
     flex: 1,
     gap: 20,
     paddingTop: 8,
   },
+  fieldGroup: {
+    gap: 8,
+  },
   label: {
     fontSize: 14,
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: "Tajawal_700Bold",
+    color: Colors.onSurfaceVariant,
     textAlign: "right",
-    marginBottom: 8,
   },
   inputWrapper: {
-    borderWidth: 1.5,
-    borderRadius: 14,
-    paddingHorizontal: 16,
+    backgroundColor: Colors.surfaceContainerHighest,
+    borderRadius: 12,
+    paddingHorizontal: 14,
     paddingVertical: 4,
+    flexDirection: "row-reverse",
+    alignItems: "center",
+  },
+  inputError: {
+    borderWidth: 1.5,
+    borderColor: Colors.error,
   },
   input: {
+    flex: 1,
     fontSize: 16,
-    fontFamily: "Inter_400Regular",
-    paddingVertical: 12,
+    fontFamily: "Tajawal_400Regular",
+    paddingVertical: 14,
+    color: Colors.onSurface,
     textAlign: "right",
   },
   errorText: {
     fontSize: 13,
-    fontFamily: "Inter_400Regular",
+    fontFamily: "Tajawal_400Regular",
+    color: Colors.error,
     textAlign: "right",
-    marginTop: 6,
+    marginTop: 4,
   },
-  outlineBtn: {
+  importBtn: {
     borderWidth: 1.5,
+    borderColor: Colors.primaryFixedDim,
     borderRadius: 14,
     paddingVertical: 14,
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row-reverse",
     gap: 10,
+    backgroundColor: Colors.primaryFixedDim + "33",
   },
-  outlineBtnText: {
+  importBtnText: {
     fontSize: 16,
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: "Tajawal_700Bold",
+    color: Colors.primary,
   },
   saveBtn: {
-    borderRadius: 14,
-    paddingVertical: 16,
+    borderRadius: 16,
+    overflow: "hidden",
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  saveBtnGrad: {
+    paddingVertical: 18,
     alignItems: "center",
     justifyContent: "center",
   },
   saveBtnText: {
     color: "#fff",
-    fontSize: 17,
-    fontFamily: "Inter_600SemiBold",
+    fontSize: 18,
+    fontFamily: "Tajawal_700Bold",
   },
   modalContainer: {
     flex: 1,
+    backgroundColor: Colors.background,
   },
   modalHeader: {
     flexDirection: "row-reverse",
@@ -377,11 +323,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 20,
     paddingBottom: 16,
-    borderBottomWidth: 1,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Colors.surfaceContainerHighest,
   },
   modalTitle: {
     fontSize: 20,
-    fontFamily: "Inter_700Bold",
+    fontFamily: "Tajawal_700Bold",
+    color: Colors.onSurface,
   },
   contactRow: {
     flexDirection: "row-reverse",
@@ -389,42 +337,36 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Colors.surfaceContainerHighest,
     gap: 14,
   },
   contactAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: Colors.surfaceContainerLow,
     alignItems: "center",
     justifyContent: "center",
   },
   contactInitial: {
     fontSize: 18,
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: "Tajawal_700Bold",
+    color: Colors.primary,
   },
   contactInfo: {
     flex: 1,
     alignItems: "flex-end",
+    gap: 2,
   },
   contactName: {
     fontSize: 16,
-    fontFamily: "Inter_500Medium",
+    fontFamily: "Tajawal_500Medium",
+    color: Colors.onSurface,
     textAlign: "right",
   },
   contactPhone: {
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-    textAlign: "right",
-    marginTop: 2,
-  },
-  emptyContacts: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingTop: 80,
-    gap: 16,
-  },
-  emptyText: {
-    fontSize: 16,
-    fontFamily: "Inter_400Regular",
+    fontSize: 13,
+    fontFamily: "Tajawal_400Regular",
+    color: Colors.onSurfaceVariant,
   },
 });

@@ -1,4 +1,5 @@
-import { Feather } from "@expo/vector-icons";
+import { MaterialIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import React, { useState } from "react";
@@ -24,7 +25,16 @@ export default function LoginScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [emailMode, setEmailMode] = useState(false);
 
-  const colors = Colors.light;
+  const topPad = Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
+  const botPad = Math.max(insets.bottom, Platform.OS === "web" ? 34 : 0) + 20;
+
+  const navigateAfterLogin = (hasContact: boolean) => {
+    if (!hasContact) {
+      router.replace("/onboarding");
+    } else {
+      router.replace("/(tabs)");
+    }
+  };
 
   const handleContinue = async () => {
     if (!email.trim() || !email.includes("@")) {
@@ -36,11 +46,7 @@ export default function LoginScreen() {
     try {
       const name = email.split("@")[0];
       await setUser({ name, email: email.trim() });
-      if (contact) {
-        router.replace("/home");
-      } else {
-        router.replace("/onboarding");
-      }
+      navigateAfterLogin(!!contact);
     } finally {
       setIsLoading(false);
     }
@@ -50,59 +56,43 @@ export default function LoginScreen() {
     setIsLoading(true);
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
-      await setUser({ name: "مستخدم", email: "user@gmail.com" });
-      if (contact) {
-        router.replace("/home");
-      } else {
-        router.replace("/onboarding");
-      }
+      await setUser({ name: "أحمد", email: "user@gmail.com" });
+      navigateAfterLogin(!!contact);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const topPad =
-    Platform.OS === "web"
-      ? Math.max(insets.top, 67)
-      : insets.top;
-
   return (
-    <View
-      style={[
-        styles.container,
-        {
-          backgroundColor: colors.background,
-          paddingTop: topPad + 20,
-          paddingBottom: Math.max(insets.bottom, Platform.OS === "web" ? 34 : 0) + 20,
-        },
-      ]}
-    >
+    <View style={[styles.container, { paddingTop: topPad, paddingBottom: botPad }]}>
+      <LinearGradient
+        colors={["#E0F2F1", Colors.surface]}
+        style={StyleSheet.absoluteFill}
+      />
+
       <View style={styles.top}>
-        <View style={[styles.logoCircle, { backgroundColor: colors.primaryBg }]}>
-          <Feather name="shield" size={44} color={colors.primary} />
+        <View style={styles.iconOuter}>
+          <LinearGradient
+            colors={[Colors.primary, Colors.primaryContainer]}
+            style={styles.iconInner}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <MaterialIcons name="volunteer-activism" size={44} color="#fff" />
+          </LinearGradient>
         </View>
-        <Text style={[styles.title, { color: colors.primary }]}>طمّن أهلك</Text>
-        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-          تواصل مع من تحب بضغطة واحدة
-        </Text>
+        <Text style={styles.title}>أنا بخير</Text>
+        <Text style={styles.subtitle}>أمانك في كل خطوة</Text>
       </View>
 
       <View style={styles.formArea}>
         {emailMode ? (
           <>
-            <View
-              style={[
-                styles.inputWrapper,
-                {
-                  borderColor: colors.border,
-                  backgroundColor: colors.card,
-                },
-              ]}
-            >
+            <View style={styles.inputWrapper}>
               <TextInput
-                style={[styles.input, { color: colors.text }]}
+                style={styles.input}
                 placeholder="البريد الإلكتروني"
-                placeholderTextColor={colors.textMuted}
+                placeholderTextColor={Colors.outline}
                 value={email}
                 onChangeText={setEmail}
                 keyboardType="email-address"
@@ -110,70 +100,81 @@ export default function LoginScreen() {
                 autoCorrect={false}
                 textAlign="right"
               />
+              <MaterialIcons
+                name="alternate-email"
+                size={20}
+                color={Colors.outline}
+                style={styles.inputIcon}
+              />
             </View>
 
             <TouchableOpacity
-              style={[styles.primaryBtn, { backgroundColor: colors.primary }]}
+              style={styles.primaryBtn}
               onPress={handleContinue}
               disabled={isLoading}
               activeOpacity={0.85}
             >
-              {isLoading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.primaryBtnText}>متابعة</Text>
-              )}
+              <LinearGradient
+                colors={[Colors.primary, Colors.primaryContainer]}
+                style={styles.btnGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.primaryBtnText}>متابعة</Text>
+                )}
+              </LinearGradient>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              onPress={() => setEmailMode(false)}
-              style={styles.linkBtn}
-            >
-              <Text style={[styles.linkText, { color: colors.textSecondary }]}>
-                رجوع
-              </Text>
+            <TouchableOpacity onPress={() => setEmailMode(false)} style={styles.linkBtn}>
+              <Text style={styles.linkText}>رجوع</Text>
             </TouchableOpacity>
           </>
         ) : (
           <>
             <TouchableOpacity
-              style={[styles.googleBtn, { borderColor: colors.border, backgroundColor: colors.card }]}
+              style={styles.googleBtn}
               onPress={handleGoogleSignIn}
               disabled={isLoading}
               activeOpacity={0.85}
             >
               {isLoading ? (
-                <ActivityIndicator color={colors.primary} />
+                <ActivityIndicator color={Colors.primary} />
               ) : (
                 <>
-                  <Feather name="globe" size={20} color={colors.textSecondary} />
-                  <Text style={[styles.googleBtnText, { color: colors.text }]}>
-                    تسجيل عبر Google
-                  </Text>
+                  <MaterialIcons name="language" size={22} color={Colors.onSurfaceVariant} />
+                  <Text style={styles.googleBtnText}>تسجيل الدخول عبر Google</Text>
                 </>
               )}
             </TouchableOpacity>
 
-            <View style={[styles.dividerRow]}>
-              <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-              <Text style={[styles.dividerText, { color: colors.textMuted }]}>أو</Text>
-              <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+            <View style={styles.dividerRow}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>أو</Text>
+              <View style={styles.dividerLine} />
             </View>
 
             <TouchableOpacity
-              style={[styles.primaryBtn, { backgroundColor: colors.primary }]}
+              style={styles.primaryBtn}
               onPress={() => setEmailMode(true)}
               activeOpacity={0.85}
             >
-              <Text style={styles.primaryBtnText}>تسجيل عبر البريد الإلكتروني</Text>
+              <LinearGradient
+                colors={[Colors.primary, Colors.primaryContainer]}
+                style={styles.btnGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <Text style={styles.primaryBtnText}>الدخول بالبريد الإلكتروني</Text>
+              </LinearGradient>
             </TouchableOpacity>
           </>
         )}
       </View>
 
-      <Text style={[styles.footer, { color: colors.textMuted }]}>
-        بالمتابعة، أنت توافق على سياسة الخصوصية
-      </Text>
+      <Text style={styles.footer}>بالمتابعة، أنت توافق على سياسة الخصوصية</Text>
     </View>
   );
 }
@@ -181,72 +182,111 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingHorizontal: 24,
+    paddingHorizontal: 28,
     justifyContent: "space-between",
   },
   top: {
     alignItems: "center",
     gap: 12,
-    paddingTop: 20,
+    paddingTop: 30,
   },
-  logoCircle: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
+  iconOuter: {
+    width: 120,
+    height: 120,
+    borderRadius: 36,
+    backgroundColor: "rgba(255,255,255,0.5)",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 8,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.2,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  iconInner: {
+    width: 86,
+    height: 86,
+    borderRadius: 26,
+    alignItems: "center",
+    justifyContent: "center",
   },
   title: {
-    fontSize: 34,
-    fontFamily: "Inter_700Bold",
+    fontSize: 38,
+    fontFamily: "Tajawal_800ExtraBold",
+    color: Colors.primary,
     textAlign: "center",
   },
   subtitle: {
-    fontSize: 16,
-    fontFamily: "Inter_400Regular",
+    fontSize: 17,
+    fontFamily: "Tajawal_500Medium",
+    color: Colors.onSurfaceVariant,
     textAlign: "center",
-    lineHeight: 24,
   },
   formArea: {
     gap: 14,
   },
   inputWrapper: {
-    borderWidth: 1.5,
-    borderRadius: 14,
+    backgroundColor: Colors.surfaceContainerHighest,
+    borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 4,
+    flexDirection: "row-reverse",
+    alignItems: "center",
   },
   input: {
+    flex: 1,
     fontSize: 16,
-    fontFamily: "Inter_400Regular",
-    paddingVertical: 12,
+    fontFamily: "Tajawal_400Regular",
+    paddingVertical: 14,
     textAlign: "right",
+    color: Colors.onSurface,
+  },
+  inputIcon: {
+    marginLeft: 8,
   },
   primaryBtn: {
-    borderRadius: 14,
-    paddingVertical: 16,
+    borderRadius: 16,
+    overflow: "hidden",
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  btnGradient: {
+    paddingVertical: 18,
     alignItems: "center",
     justifyContent: "center",
+    flexDirection: "row",
+    gap: 10,
   },
   primaryBtnText: {
     color: "#fff",
-    fontSize: 17,
-    fontFamily: "Inter_600SemiBold",
+    fontSize: 18,
+    fontFamily: "Tajawal_700Bold",
     textAlign: "center",
   },
   googleBtn: {
-    borderWidth: 1.5,
-    borderRadius: 14,
-    paddingVertical: 16,
+    borderRadius: 16,
+    paddingVertical: 17,
+    backgroundColor: Colors.surfaceContainerLowest,
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row-reverse",
-    gap: 10,
+    gap: 12,
+    borderWidth: 1.5,
+    borderColor: Colors.surfaceContainerHighest,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
   googleBtnText: {
     fontSize: 17,
-    fontFamily: "Inter_500Medium",
+    fontFamily: "Tajawal_700Bold",
+    color: Colors.onSurface,
     textAlign: "center",
   },
   dividerRow: {
@@ -257,10 +297,12 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
+    backgroundColor: Colors.surfaceContainerHighest,
   },
   dividerText: {
     fontSize: 14,
-    fontFamily: "Inter_400Regular",
+    fontFamily: "Tajawal_400Regular",
+    color: Colors.outline,
   },
   linkBtn: {
     alignItems: "center",
@@ -268,13 +310,15 @@ const styles = StyleSheet.create({
   },
   linkText: {
     fontSize: 15,
-    fontFamily: "Inter_400Regular",
+    fontFamily: "Tajawal_500Medium",
+    color: Colors.onSurfaceVariant,
     textDecorationLine: "underline",
   },
   footer: {
     fontSize: 12,
-    fontFamily: "Inter_400Regular",
+    fontFamily: "Tajawal_400Regular",
+    color: Colors.outline,
     textAlign: "center",
-    paddingBottom: 8,
+    paddingBottom: 4,
   },
 });

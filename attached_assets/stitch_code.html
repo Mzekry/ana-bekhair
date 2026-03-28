@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar" class="">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>أنا بخير | Ana Bekhair - أمانك في كل خطوة</title>
+    
+    <!-- Libraries -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/history@5/umd/history.development.js"></script>
+    <script src="https://unpkg.com/react-router@6.3.0/umd/react-router.development.js"></script>
+    <script src="https://unpkg.com/react-router-dom@6.3.0/umd/react-router-dom.development.js"></script>
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=Be+Vietnam+Pro:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#00796B",
+                        "primary-container": "#005e53",
+                        "on-primary": "#ffffff",
+                        "secondary": "#005faf",
+                        "secondary-container": "#54a0fe",
+                        "surface": "#f8fafa",
+                        "background": "#f8fafa",
+                        "on-surface": "#191c1d",
+                        "on-surface-variant": "#3e4946",
+                        "outline": "#6e7a76",
+                        "error": "#ba1a1a",
+                        "on-error": "#ffffff",
+                        "surface-container-low": "#f2f4f4",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container-highest": "#e1e3e3",
+                        "primary-fixed-dim": "#7ad7c6",
+                        "secondary-fixed-dim": "#a5c8ff",
+                        "tertiary-fixed": "#d4e6e5",
+                    },
+                    fontFamily: {
+                        "headline": ["Tajawal", "sans-serif"],
+                        "body": ["Be Vietnam Pro", "Plus Jakarta Sans", "Tajawal", "sans-serif"],
+                        "label": ["Plus Jakarta Sans", "Tajawal", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.5rem",
+                        "lg": "1rem",
+                        "xl": "1.5rem",
+                        "2xl": "2rem",
+                        "3xl": "2.5rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            line-height: 1;
+            text-transform: none;
+            letter-spacing: normal;
+            word-wrap: normal;
+            white-space: nowrap;
+            direction: ltr;
+        }
+        .status-halo {
+            background: radial-gradient(circle, rgba(0, 121, 107, 0.15) 0%, rgba(0, 121, 107, 0) 70%);
+        }
+        .status-halo-splash {
+            background: radial-gradient(circle, rgba(0, 94, 83, 0.08) 0%, rgba(0, 95, 175, 0.03) 70%, transparent 100%);
+        }
+        body {
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+        }
+        /* Custom hide scrollbar */
+        ::-webkit-scrollbar {
+            display: none;
+        }
+        * {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface font-body selection:bg-primary/20">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        const { createRoot } = ReactDOM;
+        const { MemoryRouter, Routes, Route, Link, useNavigate, useLocation } = ReactRouterDOM;
+
+        // --- Components ---
+
+        const BottomNav = ({ activeTab }) => {
+            const navItems = [
+                { id: 'settings', label: 'الإعدادات', icon: 'settings', path: '/settings' },
+                { id: 'alerts', label: 'التنبيهات', icon: 'notifications', path: '/home', badge: true },
+                { id: 'contacts', label: 'جهات الاتصال', icon: 'person_search', path: '/add-contact' },
+                { id: 'home', label: 'الرئيسية', icon: 'home', path: '/home' },
+            ];
+
+            return (
+                <nav className="fixed bottom-0 left-0 w-full z-50 flex flex-row justify-around items-center px-4 pb-6 pt-3 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-t-3xl shadow-[0_-4px_20px_0_rgba(0,121,107,0.08)]">
+                    {navItems.map((item) => {
+                        const isActive = activeTab === item.id;
+                        return (
+                            <Link 
+                                key={item.id}
+                                to={item.path}
+                                className={`flex flex-col items-center justify-center px-4 py-2 transition-all duration-300 relative ${
+                                    isActive 
+                                    ? 'bg-gradient-to-br from-teal-800 to-teal-700 text-white rounded-2xl scale-110 shadow-lg' 
+                                    : 'text-slate-400 dark:text-slate-500 hover:text-teal-600 active:scale-90'
+                                }`}
+                            >
+                                <span 
+                                    className="material-symbols-outlined" 
+                                    style={{ fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0" }}
+                                >
+                                    {item.icon}
+                                </span>
+                                <span className="font-headline font-medium text-[11px] mt-1">{item.label}</span>
+                                {!isActive && item.badge && (
+                                    <span className="absolute top-2 right-4 w-2 h-2 bg-error rounded-full"></span>
+                                )}
+                            </Link>
+                        );
+                    })}
+                </nav>
+            );
+        };
+
+        const Header = ({ title, showBack = false }) => {
+            const navigate = useNavigate();
+            return (
+                <header className="fixed top-0 w-full z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md shadow-sm shadow-teal-900/5 h-16 flex flex-row-reverse justify-between items-center px-6">
+                    <div className="flex items-center gap-4">
+                        {title ? (
+                            <h1 className="font-headline font-bold text-xl text-teal-900 dark:text-teal-100">{title}</h1>
+                        ) : (
+                            <div className="w-10 h-10 rounded-full bg-surface-container-highest overflow-hidden border-2 border-primary/10">
+                                <img alt="Profile" className="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAIjbFB1fwANydzQO0bFL2THy2rkhYyR-CYCCwJkqs_56tOAjp3B2k-L8SXBZpeITCzhd3RZgrMMCdUQJ3fe6I7oMNP5qzfCaBdYvxZV_0auoF5wmRf4rQyi7lLhldp-W2SNashR9Qq_RrqD72gAGMbpYfcF8c2G97jfVbCCHIR9XPQO3m6EQy6L-ChTAUbIfvgKQ_K_xdgXuZQbWB5IeO87goPqcucpbbKIxs_xmTp9VwwBU6W7nlrEkBo4OgwXbIHGrx39kmyyd4"/>
+                            </div>
+                        )}
+                        {!title && <h1 className="font-headline font-bold text-xl text-teal-900 dark:text-teal-100 tracking-tight">أنا بخير</h1>}
+                    </div>
+                    <button 
+                        onClick={() => showBack ? navigate(-1) : null}
+                        className="text-teal-800 dark:text-teal-400 active:scale-95 transition-transform duration-200 p-2 hover:bg-teal-50/50 rounded-full"
+                    >
+                        <span className="material-symbols-outlined">{showBack ? 'arrow_forward' : 'menu'}</span>
+                    </button>
+                </header>
+            );
+        };
+
+        // --- Screens ---
+
+        const SplashScreen = () => {
+            const navigate = useNavigate();
+            useEffect(() => {
+                const timer = setTimeout(() => navigate('/home'), 3000);
+                return () => clearTimeout(timer);
+            }, [navigate]);
+
+            return (
+                <div className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-background text-on-background">
+                    <div className="fixed inset-0 z-0 bg-gradient-to-b from-[#E0F2F1] to-surface"></div>
+                    <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] status-halo-splash rounded-full z-0"></div>
+                    
+                    <main className="relative z-10 flex flex-col items-center text-center px-8">
+                        <div className="mb-12 relative">
+                            <div className="w-32 h-32 md:w-40 md:h-40 bg-surface-container-lowest/40 backdrop-blur-xl rounded-[2.5rem] flex items-center justify-center shadow-[0_20px_50px_rgba(0,121,107,0.1)] border border-surface-container-lowest/50">
+                                <div className="w-20 h-20 md:w-24 md:h-24 bg-gradient-to-br from-primary to-primary-container rounded-3xl flex items-center justify-center transform -rotate-3 transition-transform hover:rotate-0 duration-500 shadow-lg">
+                                    <span className="material-symbols-outlined text-white text-5xl md:text-6xl" style={{ fontVariationSettings: "'FILL' 1" }}>volunteer_activism</span>
+                                </div>
+                            </div>
+                            <div className="absolute -bottom-2 -left-2 w-12 h-12 bg-secondary/10 backdrop-blur-md rounded-full flex items-center justify-center shadow-sm">
+                                <span className="material-symbols-outlined text-secondary text-2xl">check_circle</span>
+                            </div>
+                        </div>
+                        <div className="space-y-4">
+                            <h1 className="text-4xl md:text-5xl font-extrabold text-primary tracking-tight font-headline">أنا بخير</h1>
+                            <p className="text-lg md:text-xl text-on-surface-variant font-medium tracking-wide">أمانك في كل خطوة</p>
+                        </div>
+                        <div className="mt-20 w-48 h-1 bg-surface-variant rounded-full overflow-hidden">
+                            <div className="h-full bg-gradient-to-r from-primary to-secondary w-1/3 rounded-full animate-[loading_2s_ease-in-out_infinite]"></div>
+                        </div>
+                    </main>
+
+                    <footer className="fixed bottom-12 z-10 flex flex-col items-center gap-6 w-full px-8">
+                        <div className="flex items-center gap-3 px-4 py-2 bg-surface-container-low rounded-full shadow-sm">
+                            <span className="w-2 h-2 bg-primary rounded-full animate-pulse"></span>
+                            <span className="text-on-surface-variant text-sm font-medium">نظام المراقبة الذكي مفعل</span>
+                        </div>
+                    </footer>
+
+                    <div className="fixed top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2"></div>
+                    <div className="fixed bottom-0 left-0 w-80 h-80 bg-secondary/5 rounded-full blur-[80px] translate-y-1/2 -translate-x-1/2"></div>
+                    <style>{`@keyframes loading { 0% { transform: translateX(200%); } 100% { transform: translateX(-200%); } }`}</style>
+                </div>
+            );
+        };
+
+        const HomeScreen = () => {
+            const [status, setStatus] = useState('safe');
+            
+            return (
+                <div className="bg-surface min-h-screen">
+                    <Header />
+                    <main className="pt-24 pb-32 px-6 max-w-2xl mx-auto space-y-12">
+                        <section className="space-y-1">
+                            <h2 className="text-headline font-bold text-3xl text-on-surface leading-tight">مرحباً، أحمد</h2>
+                            <p className="text-on-surface-variant text-lg">نحن هنا للتأكد من سلامتك اليوم.</p>
+                        </section>
+
+                        <section className="relative flex flex-col items-center justify-center py-6">
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                <div className="w-96 h-96 rounded-full status-halo animate-pulse"></div>
+                            </div>
+                            <div className="relative z-10">
+                                <button 
+                                    onClick={() => alert("تم تحديث حالتك بنجاح!")}
+                                    className="w-72 h-72 rounded-full bg-gradient-to-br from-primary to-primary-container text-on-primary shadow-[0_30px_60px_rgba(0,121,107,0.35)] flex flex-col items-center justify-center gap-4 active:scale-95 transition-all duration-300 group ring-8 ring-primary/5"
+                                >
+                                    <span className="material-symbols-outlined text-7xl group-hover:scale-110 transition-transform" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                                    <span className="font-headline font-extrabold text-5xl tracking-wider">أنا بخير</span>
+                                </button>
+                            </div>
+                            <div className="mt-10 text-center space-y-2">
+                                <div className="flex items-center justify-center gap-2 text-primary">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-primary animate-ping"></span>
+                                    <span className="font-bold text-lg">النظام يعمل بشكل طبيعي</span>
+                                </div>
+                                <p className="text-on-surface-variant font-label text-sm">آخر تحديث: قبل 15 دقيقة</p>
+                            </div>
+                        </section>
+
+                        <section className="px-2">
+                            <button className="w-full bg-error text-on-error py-5 rounded-3xl font-headline font-bold text-xl flex items-center justify-center gap-3 shadow-lg shadow-error/20 active:scale-[0.98] transition-all">
+                                <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>emergency_share</span>
+                                <span>إرسال تنبيه طوارئ</span>
+                            </button>
+                        </section>
+
+                        <section className="space-y-4">
+                            <div className="flex items-center justify-between px-2">
+                                <h3 className="font-headline font-bold text-xl text-on-surface">شخص الطوارئ الخاص بك</h3>
+                                <Link to="/add-contact" className="text-secondary font-medium text-sm hover:underline">إدارة جهات الاتصال</Link>
+                            </div>
+                            <div className="bg-surface-container-low rounded-3xl p-6 flex items-center gap-6 shadow-sm">
+                                <div className="relative">
+                                    <div className="w-20 h-20 rounded-2xl overflow-hidden shadow-lg">
+                                        <img alt="Emergency Person" className="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBMWgTjVLhxX9WZV1RGsF_XkymAPijUtCLXeZKb2sy37hMqayU-pV9qgFkKAoEgUpetQvBKOnX5Ay54eDvjsAgCgxsdzxoyMWOLW-udIOso0TVyX_I6mn3M6GeUhzVAXbWELm55PZlLWxn42V5BdDqywWDyZO192UuBLwdTozY7O5RVBwK8l7gn_0k-tZxoDqquc76mBiD423oaZ-0S-twbjOTpdGWqfRo1giies2JQNBlrhN6lL3B6LKtS9weaspwkJw1c4Ye2n1s"/>
+                                    </div>
+                                    <div className="absolute -bottom-2 -right-2 bg-primary text-on-primary p-1.5 rounded-lg shadow-md">
+                                        <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>verified_user</span>
+                                    </div>
+                                </div>
+                                <div className="flex-1 space-y-1">
+                                    <p className="font-headline font-bold text-lg text-on-surface">سارة المنصور</p>
+                                    <p className="text-on-surface-variant font-body text-sm flex items-center gap-1" dir="ltr">+966 50 123 4567</p>
+                                </div>
+                                <a className="bg-surface-container-lowest text-secondary h-14 w-14 rounded-2xl flex items-center justify-center shadow-sm hover:bg-secondary hover:text-white transition-colors active:scale-95 duration-200" href="tel:+966501234567">
+                                    <span className="material-symbols-outlined text-2xl">call</span>
+                                </a>
+                            </div>
+                        </section>
+                    </main>
+                    <BottomNav activeTab="home" />
+                </div>
+            );
+        };
+
+        const AddContactScreen = () => {
+            const navigate = useNavigate();
+            return (
+                <div className="bg-background min-h-screen flex flex-col">
+                    <Header title="أنا بخير" showBack={true} />
+                    <main className="flex-grow pt-24 pb-32 px-6 max-w-2xl mx-auto w-full">
+                        <section className="mb-12 relative">
+                            <div className="absolute -z-10 top-0 right-0 w-64 h-64 status-halo-splash rounded-full blur-3xl opacity-60"></div>
+                            <h2 className="text-4xl font-extrabold text-on-surface mb-3 leading-tight font-headline tracking-tight">إضافة شخص الطوارئ</h2>
+                            <p className="text-on-surface-variant text-lg leading-relaxed font-headline">أضف جهة اتصال الطوارئ الرئيسية الخاصة بك لضمان بقائك في أمان تام دائماً.</p>
+                        </section>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
+                            <button className="group relative overflow-hidden bg-surface-container-lowest p-6 rounded-xl transition-all duration-300 hover:bg-white active:scale-98 shadow-sm text-right flex flex-col justify-between h-36 border border-transparent hover:border-primary/10">
+                                <div className="w-12 h-12 bg-primary-fixed-dim rounded-lg flex items-center justify-center text-on-primary-fixed-variant mb-4">
+                                    <span className="material-symbols-outlined">person_add</span>
+                                </div>
+                                <span className="text-lg font-bold text-on-surface font-headline">إضافة يدوياً</span>
+                            </button>
+                            <button className="group relative overflow-hidden bg-surface-container-low p-6 rounded-xl transition-all duration-300 hover:bg-white active:scale-98 shadow-sm text-right flex flex-col justify-between h-36 border border-transparent hover:border-secondary/10">
+                                <div className="w-12 h-12 bg-secondary-fixed-dim rounded-lg flex items-center justify-center text-on-secondary-fixed-variant mb-4">
+                                    <span className="material-symbols-outlined">contacts</span>
+                                </div>
+                                <span className="text-lg font-bold text-on-surface font-headline">اختر من جهات الاتصال</span>
+                            </button>
+                        </div>
+
+                        <section className="bg-surface-container-low rounded-xl p-8 shadow-sm">
+                            <form className="space-y-6" onSubmit={(e) => { e.preventDefault(); navigate('/home'); }}>
+                                <div className="space-y-2">
+                                    <label className="block text-sm font-semibold text-on-surface-variant mr-1 font-headline">اسم شخص الطوارئ</label>
+                                    <div className="relative">
+                                        <input className="w-full h-14 bg-surface-container-highest border-none rounded-lg px-4 text-on-surface placeholder:text-outline focus:ring-2 focus:ring-primary/20 transition-all text-right font-headline" placeholder="أدخل الاسم الكامل" type="text"/>
+                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-outline">person</span>
+                                    </div>
+                                </div>
+                                <div className="flex flex-col md:flex-row gap-4">
+                                    <div className="flex-1 space-y-2">
+                                        <label className="block text-sm font-semibold text-on-surface-variant mr-1 font-headline">رقم الجوال</label>
+                                        <div className="relative">
+                                            <input className="w-full h-14 bg-surface-container-highest border-none rounded-lg px-4 text-on-surface placeholder:text-outline focus:ring-2 focus:ring-primary/20 transition-all text-left font-body" dir="ltr" placeholder="50 000 0000" type="tel"/>
+                                            <span className="absolute right-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-outline">call</span>
+                                        </div>
+                                    </div>
+                                    <div className="w-full md:w-32 space-y-2">
+                                        <label className="block text-sm font-semibold text-on-surface-variant mr-1 font-headline">الرمز</label>
+                                        <select className="w-full h-14 bg-surface-container-highest border-none rounded-lg px-4 text-on-surface focus:ring-2 focus:ring-primary/20 transition-all font-body text-center">
+                                            <option>+966</option>
+                                            <option>+971</option>
+                                            <option>+965</option>
+                                            <option>+974</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div className="pt-6">
+                                    <button className="w-full h-16 bg-gradient-to-br from-primary to-primary-container text-on-primary font-bold text-xl rounded-xl shadow-lg shadow-primary/20 flex items-center justify-center gap-3 active:scale-[0.98] transition-all font-headline" type="submit">
+                                        <span>حفظ شخص الطوارئ</span>
+                                        <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>shield_with_heart</span>
+                                    </button>
+                                </div>
+                            </form>
+                        </section>
+                        <div className="mt-8 flex items-start gap-4 p-5 bg-tertiary-fixed/30 rounded-xl border border-tertiary-fixed-dim/20">
+                            <span className="material-symbols-outlined text-primary mt-1">info</span>
+                            <p className="text-sm text-on-tertiary-fixed-variant leading-relaxed font-headline">سيتم إرسال تنبيه فوري لهذا الشخص في حال عدم استجابتك لطلبات التحقق من السلامة أو في حالات الطوارئ.</p>
+                        </div>
+                    </main>
+                    <BottomNav activeTab="contacts" />
+                </div>
+            );
+        };
+
+        const SettingsScreen = () => {
+            const navigate = useNavigate();
+            return (
+                <div className="bg-surface text-on-surface min-h-screen pb-32">
+                    <Header title="الإعدادات" showBack={true} />
+                    <main className="pt-24 px-6 max-w-2xl mx-auto space-y-8">
+                        <section className="flex items-center gap-6 p-6 bg-surface-container-lowest rounded-3xl transition-all duration-300 shadow-sm">
+                            <div className="relative">
+                                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-primary-container flex items-center justify-center text-white text-2xl font-bold shadow-lg shadow-primary/10">أ</div>
+                                <div className="absolute bottom-0 left-0 bg-secondary-container text-white p-1.5 rounded-full border-4 border-surface-container-lowest">
+                                    <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
+                                </div>
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-bold text-on-surface font-headline leading-tight">أحمد عبدالله</h2>
+                                <p className="text-on-surface-variant text-sm mt-1">ahmed.a@example.com</p>
+                            </div>
+                        </section>
+
+                        <div className="space-y-4">
+                            <h3 className="text-sm font-bold text-primary px-2 font-headline uppercase tracking-wider">الحساب والأمان</h3>
+                            <div className="bg-surface-container-low rounded-3xl overflow-hidden shadow-sm">
+                                <button className="w-full flex items-center justify-between p-5 hover:bg-surface-container transition-colors group">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center text-primary shadow-sm">
+                                            <span className="material-symbols-outlined">alternate_email</span>
+                                        </div>
+                                        <div className="text-right">
+                                            <span className="block text-on-surface font-semibold">الحساب</span>
+                                            <span className="block text-on-surface-variant text-xs mt-0.5">تغيير البريد الإلكتروني وكلمة المرور</span>
+                                        </div>
+                                    </div>
+                                    <span className="material-symbols-outlined text-outline-variant group-hover:text-primary transition-colors">chevron_left</span>
+                                </button>
+                                <button className="w-full flex items-center justify-between p-5 hover:bg-surface-container transition-colors group">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center text-primary shadow-sm">
+                                            <span className="material-symbols-outlined">public</span>
+                                        </div>
+                                        <div className="text-right">
+                                            <span className="block text-on-surface font-semibold">تغيير البلد</span>
+                                            <span className="block text-on-surface-variant text-xs mt-0.5">تحديث أرقام الطوارئ وأشخاص الطوارئ</span>
+                                        </div>
+                                    </div>
+                                    <span className="material-symbols-outlined text-outline-variant group-hover:text-primary transition-colors">chevron_left</span>
+                                </button>
+                                <button className="w-full flex items-center justify-between p-5 hover:bg-surface-container transition-colors group border-t border-white/40">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center text-primary shadow-sm">
+                                            <span className="material-symbols-outlined">shield_lock</span>
+                                        </div>
+                                        <div className="text-right">
+                                            <span className="block text-on-surface font-semibold">الخصوصية والأمان</span>
+                                            <span className="block text-on-surface-variant text-xs mt-0.5">كيفية استخدام الموقع وبيانات التحقق</span>
+                                        </div>
+                                    </div>
+                                    <span className="material-symbols-outlined text-outline-variant group-hover:text-primary transition-colors">chevron_left</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="space-y-4">
+                            <h3 className="text-sm font-bold text-primary px-2 font-headline uppercase tracking-wider">التفضيلات</h3>
+                            <div className="bg-surface-container-low rounded-3xl overflow-hidden p-5 shadow-sm">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center text-primary shadow-sm">
+                                            <span className="material-symbols-outlined">notifications_active</span>
+                                        </div>
+                                        <div className="text-right">
+                                            <span className="block text-on-surface font-semibold">إشعارات التحقق</span>
+                                            <span className="block text-on-surface-variant text-xs mt-0.5">تلقي تذكيرات دورية للأمان</span>
+                                        </div>
+                                    </div>
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input defaultChecked className="sr-only peer" type="checkbox" value=""/>
+                                        <div className="w-11 h-6 bg-outline-variant peer-focus:outline-none rounded-full peer peer-checked:after:-translate-x-full rtl:peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <section className="relative overflow-hidden p-8 rounded-[2rem] bg-gradient-to-br from-primary to-primary-container text-white shadow-xl shadow-primary/20">
+                            <div className="relative z-10 space-y-3">
+                                <h4 className="text-xl font-bold font-headline">أمانك هو أولويتنا</h4>
+                                <p className="text-on-primary-container text-sm leading-relaxed opacity-90">يتم تشفير كافة بيانات الموقع ولا يتم مشاركتها إلا في حالات الطوارئ القصوى مع الأشخاص الذين حددتهم كأشخاص للطوارئ.</p>
+                                <button className="mt-2 text-xs font-bold bg-white/20 hover:bg-white/30 backdrop-blur-sm px-4 py-2 rounded-xl transition-all">عرض سياسة الخصوصية</button>
+                            </div>
+                            <span className="material-symbols-outlined absolute -bottom-8 -left-8 text-[120px] opacity-10 rotate-12">guardian</span>
+                        </section>
+
+                        <div className="pt-4 flex flex-col items-center gap-6">
+                            <button 
+                                onClick={() => navigate('/')}
+                                className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl bg-surface-container-high text-error hover:bg-error/5 active:scale-95 transition-all duration-300 font-bold"
+                            >
+                                <span className="material-symbols-outlined">logout</span>
+                                <span className="font-headline">تسجيل الخروج</span>
+                            </button>
+                            <p className="text-outline text-[10px] font-label tracking-widest uppercase">الإصدار 2.4.0 • أنا بخير 2024</p>
+                        </div>
+                    </main>
+                    <BottomNav activeTab="settings" />
+                </div>
+            );
+        };
+
+        // --- Main App ---
+
+        const App = () => {
+            return (
+                <MemoryRouter>
+                    <Routes>
+                        <Route path="/" element={<SplashScreen />} />
+                        <Route path="/home" element={<HomeScreen />} />
+                        <Route path="/add-contact" element={<AddContactScreen />} />
+                        <Route path="/settings" element={<SettingsScreen />} />
+                    </Routes>
+                </MemoryRouter>
+            );
+        };
+
+        const container = document.getElementById('root');
+        const root = createRoot(container);
+        root.render(<App />);
+    </script>
+</body>
+</html>

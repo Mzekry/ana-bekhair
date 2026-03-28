@@ -10,6 +10,7 @@ import {
   FlatList,
   Modal,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -22,30 +23,31 @@ import Colors from "@/constants/colors";
 import { WatcherContact, useApp } from "@/contexts/AppContext";
 
 const PHONE_REGEX = /^\+[0-9]{10,15}$/;
-
 const COUNTRY_CODES = ["+966", "+971", "+965", "+974", "+968", "+20", "+962", "+963", "+964"];
 
-export default function OnboardingScreen() {
+export default function ContactsTab() {
   const insets = useSafeAreaInsets();
-  const { setContact } = useApp();
+  const { contact, setContact } = useApp();
 
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
+  const [name, setName] = useState(contact?.name ?? "");
+  const [phone, setPhone] = useState(
+    contact?.phone
+      ? contact.phone.replace(/^\+[0-9]{2,4}/, "")
+      : ""
+  );
   const [countryCode, setCountryCode] = useState("+966");
   const [phoneError, setPhoneError] = useState("");
   const [showContacts, setShowContacts] = useState(false);
   const [contactsList, setContactsList] = useState<Contacts.Contact[]>([]);
   const [loadingContacts, setLoadingContacts] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [mode, setMode] = useState<"choose" | "manual">("choose");
 
   const topPad = Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
-  const botPad = Math.max(insets.bottom, Platform.OS === "web" ? 34 : 0) + 20;
+  const botPad = (Platform.OS === "web" ? 84 : 72) + Math.max(insets.bottom, 0) + 16;
 
   const handleImportContacts = async () => {
     if (Platform.OS === "web") {
       Alert.alert("غير متاح", "استيراد جهات الاتصال غير متاح على الويب");
-      setMode("manual");
       return;
     }
     setLoadingContacts(true);
@@ -58,10 +60,9 @@ export default function OnboardingScreen() {
       const { data } = await Contacts.getContactsAsync({
         fields: [Contacts.Fields.Name, Contacts.Fields.PhoneNumbers],
       });
-      const filtered = data.filter(
-        (c) => c.name && c.phoneNumbers && c.phoneNumbers.length > 0
+      setContactsList(
+        data.filter((c) => c.name && c.phoneNumbers && c.phoneNumbers.length > 0)
       );
-      setContactsList(filtered);
       setShowContacts(true);
     } catch {
       Alert.alert("خطأ", "تعذر تحميل جهات الاتصال");
@@ -70,12 +71,12 @@ export default function OnboardingScreen() {
     }
   };
 
-  const handleSelectContact = (contact: Contacts.Contact) => {
-    const rawPhone = contact.phoneNumbers?.[0]?.number ?? "";
+  const handleSelectContact = (c: Contacts.Contact) => {
+    const rawPhone = c.phoneNumbers?.[0]?.number ?? "";
     const cleanPhone = rawPhone.replace(/[\s\-()]/g, "");
-    setName(contact.name ?? "");
+    setName(c.name ?? "");
     if (cleanPhone.startsWith("+")) {
-      const found = COUNTRY_CODES.find((c) => cleanPhone.startsWith(c));
+      const found = COUNTRY_CODES.find((code) => cleanPhone.startsWith(code));
       if (found) {
         setCountryCode(found);
         setPhone(cleanPhone.slice(found.length));
@@ -87,7 +88,6 @@ export default function OnboardingScreen() {
     }
     setPhoneError("");
     setShowContacts(false);
-    setMode("manual");
   };
 
   const handleSave = async () => {
@@ -105,28 +105,35 @@ export default function OnboardingScreen() {
     try {
       const w: WatcherContact = { name: name.trim(), phone: fullPhone };
       await setContact(w);
-      router.replace("/(tabs)");
+      router.push("/(tabs)");
     } finally {
       setIsSaving(false);
     }
   };
 
   return (
-    <View style={[styles.container, { paddingTop: topPad + 16, paddingBottom: botPad }]}>
-      <View style={styles.header}>
-        <Text style={styles.title}>إضافة شخص الطوارئ</Text>
-        <Text style={styles.subtitle}>
-          أضف جهة اتصال الطوارئ الرئيسية الخاصة بك لضمان بقائك في أمان تام دائماً.
-        </Text>
+    <View style={[styles.container]}>
+      <View style={[styles.header, { paddingTop: topPad + 8 }]}>
+        <TouchableOpacity onPress={() => router.back()}>
+          <MaterialIcons name="arrow-forward" size={24} color={Colors.primaryContainer} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>أنا بخير</Text>
+        <View style={{ width: 24 }} />
       </View>
 
-      {mode === "choose" ? (
+      <ScrollView
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: botPad }]}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.titleSection}>
+          <Text style={styles.title}>إضافة شخص الطوارئ</Text>
+          <Text style={styles.subtitle}>
+            أضف جهة اتصال الطوارئ الرئيسية الخاصة بك لضمان بقائك في أمان تام دائماً.
+          </Text>
+        </View>
+
         <View style={styles.choiceGrid}>
-          <TouchableOpacity
-            style={[styles.choiceCard, styles.choiceCardA]}
-            onPress={() => setMode("manual")}
-            activeOpacity={0.8}
-          >
+          <TouchableOpacity style={[styles.choiceCard, { backgroundColor: Colors.surfaceContainerLowest }]} activeOpacity={0.8}>
             <View style={[styles.choiceIcon, { backgroundColor: Colors.primaryFixedDim }]}>
               <MaterialIcons name="person-add" size={24} color={Colors.primaryContainer} />
             </View>
@@ -134,7 +141,7 @@ export default function OnboardingScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.choiceCard, styles.choiceCardB]}
+            style={[styles.choiceCard, { backgroundColor: Colors.surfaceContainerLow }]}
             onPress={handleImportContacts}
             disabled={loadingContacts}
             activeOpacity={0.8}
@@ -151,97 +158,85 @@ export default function OnboardingScreen() {
             )}
           </TouchableOpacity>
         </View>
-      ) : (
-        <View style={styles.form}>
-          <View style={styles.formCard}>
-            <View style={styles.fieldGroup}>
-              <Text style={styles.label}>اسم شخص الطوارئ</Text>
-              <View style={styles.inputWrapper}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="أدخل الاسم الكامل"
-                  placeholderTextColor={Colors.outline}
-                  value={name}
-                  onChangeText={setName}
-                  textAlign="right"
-                />
-                <MaterialIcons name="person" size={20} color={Colors.outline} />
-              </View>
+
+        <View style={styles.formCard}>
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>اسم شخص الطوارئ</Text>
+            <View style={styles.inputWrapper}>
+              <TextInput
+                style={styles.input}
+                placeholder="أدخل الاسم الكامل"
+                placeholderTextColor={Colors.outline}
+                value={name}
+                onChangeText={setName}
+                textAlign="right"
+              />
+              <MaterialIcons name="person" size={20} color={Colors.outline} />
             </View>
-
-            <View style={styles.phoneRow}>
-              <View style={styles.phoneInputWrap}>
-                <Text style={styles.label}>رقم الجوال</Text>
-                <View style={[styles.inputWrapper, phoneError ? styles.inputError : null]}>
-                  <TextInput
-                    style={[styles.input, { textAlign: "left" }]}
-                    placeholder="50 000 0000"
-                    placeholderTextColor={Colors.outline}
-                    value={phone}
-                    onChangeText={(t) => {
-                      setPhone(t);
-                      setPhoneError("");
-                    }}
-                    keyboardType="phone-pad"
-                    textAlign="left"
-                  />
-                  <MaterialIcons name="call" size={20} color={Colors.outline} />
-                </View>
-              </View>
-              <View style={styles.codeWrap}>
-                <Text style={styles.label}>الرمز</Text>
-                <View style={[styles.inputWrapper, styles.codeInputWrapper]}>
-                  <Text style={styles.codeText}>{countryCode}</Text>
-                </View>
-              </View>
-            </View>
-
-            {phoneError ? (
-              <Text style={styles.errorText}>{phoneError}</Text>
-            ) : null}
-
-            <TouchableOpacity
-              style={styles.saveBtn}
-              onPress={handleSave}
-              disabled={isSaving}
-              activeOpacity={0.85}
-            >
-              <LinearGradient
-                colors={[Colors.primary, Colors.primaryContainer]}
-                style={styles.saveBtnGrad}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                {isSaving ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <>
-                    <Text style={styles.saveBtnText}>حفظ شخص الطوارئ</Text>
-                    <MaterialIcons name="favorite" size={22} color="#fff" />
-                  </>
-                )}
-              </LinearGradient>
-            </TouchableOpacity>
           </View>
+
+          <View style={styles.phoneRow}>
+            <View style={styles.phoneInputWrap}>
+              <Text style={styles.label}>رقم الجوال</Text>
+              <View style={[styles.inputWrapper, phoneError ? styles.inputError : null]}>
+                <TextInput
+                  style={[styles.input]}
+                  placeholder="50 000 0000"
+                  placeholderTextColor={Colors.outline}
+                  value={phone}
+                  onChangeText={(t) => { setPhone(t); setPhoneError(""); }}
+                  keyboardType="phone-pad"
+                  textAlign="left"
+                />
+                <MaterialIcons name="call" size={20} color={Colors.outline} />
+              </View>
+            </View>
+            <View style={styles.codeWrap}>
+              <Text style={styles.label}>الرمز</Text>
+              <View style={[styles.inputWrapper]}>
+                <Text style={styles.codeText}>{countryCode}</Text>
+              </View>
+            </View>
+          </View>
+
+          {phoneError ? (
+            <Text style={styles.errorText}>{phoneError}</Text>
+          ) : null}
 
           <TouchableOpacity
-            style={styles.backBtn}
-            onPress={() => setMode("choose")}
+            style={styles.saveBtn}
+            onPress={handleSave}
+            disabled={isSaving}
+            activeOpacity={0.85}
           >
-            <Text style={styles.backBtnText}>رجوع لاختيار الطريقة</Text>
+            <LinearGradient
+              colors={[Colors.primary, Colors.primaryContainer]}
+              style={styles.saveBtnGrad}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              {isSaving ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <>
+                  <Text style={styles.saveBtnText}>حفظ شخص الطوارئ</Text>
+                  <MaterialIcons name="favorite" size={22} color="#fff" />
+                </>
+              )}
+            </LinearGradient>
           </TouchableOpacity>
-
-          <View style={styles.infoBanner}>
-            <MaterialIcons name="info" size={20} color={Colors.primary} />
-            <Text style={styles.infoText}>
-              سيتم إرسال تنبيه فوري لهذا الشخص في حال عدم استجابتك لطلبات التحقق من السلامة.
-            </Text>
-          </View>
         </View>
-      )}
+
+        <View style={styles.infoBanner}>
+          <MaterialIcons name="info" size={20} color={Colors.primary} style={{ marginTop: 2 }} />
+          <Text style={styles.infoText}>
+            سيتم إرسال تنبيه فوري لهذا الشخص في حال عدم استجابتك لطلبات التحقق من السلامة أو في حالات الطوارئ.
+          </Text>
+        </View>
+      </ScrollView>
 
       <Modal visible={showContacts} animationType="slide" presentationStyle="pageSheet">
-        <View style={[styles.modalContainer]}>
+        <View style={styles.modalContainer}>
           <View style={[styles.modalHeader, { paddingTop: insets.top + 16 }]}>
             <Text style={styles.modalTitle}>جهات الاتصال</Text>
             <TouchableOpacity onPress={() => setShowContacts(false)}>
@@ -250,7 +245,7 @@ export default function OnboardingScreen() {
           </View>
           <FlatList
             data={contactsList}
-            keyExtractor={(item) => item.id ?? item.name ?? Math.random().toString()}
+            keyExtractor={(item) => item.id ?? Math.random().toString()}
             renderItem={({ item }) => (
               <TouchableOpacity
                 style={styles.contactRow}
@@ -258,9 +253,7 @@ export default function OnboardingScreen() {
                 activeOpacity={0.7}
               >
                 <View style={styles.contactAvatar}>
-                  <Text style={styles.contactInitial}>
-                    {item.name?.charAt(0) ?? "?"}
-                  </Text>
+                  <Text style={styles.contactInitial}>{item.name?.charAt(0) ?? "?"}</Text>
                 </View>
                 <View style={styles.contactInfo}>
                   <Text style={styles.contactName}>{item.name}</Text>
@@ -270,12 +263,6 @@ export default function OnboardingScreen() {
                 </View>
               </TouchableOpacity>
             )}
-            ListEmptyComponent={
-              <View style={styles.emptyContacts}>
-                <MaterialIcons name="contacts" size={40} color={Colors.outline} />
-                <Text style={styles.emptyText}>لا توجد جهات اتصال</Text>
-              </View>
-            }
           />
         </View>
       </Modal>
@@ -287,18 +274,39 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
-    paddingHorizontal: 20,
-    gap: 24,
   },
   header: {
+    flexDirection: "row-reverse",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingBottom: 12,
+    backgroundColor: "rgba(255,255,255,0.85)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontFamily: "Tajawal_800ExtraBold",
+    color: Colors.primaryContainer,
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    gap: 24,
+  },
+  titleSection: {
     gap: 10,
   },
   title: {
-    fontSize: 32,
+    fontSize: 30,
     fontFamily: "Tajawal_800ExtraBold",
     color: Colors.onSurface,
     textAlign: "right",
-    lineHeight: 44,
+    lineHeight: 42,
   },
   subtitle: {
     fontSize: 16,
@@ -310,26 +318,20 @@ const styles = StyleSheet.create({
   choiceGrid: {
     flexDirection: "row-reverse",
     gap: 14,
-    flex: 1,
-    maxHeight: 160,
   },
   choiceCard: {
     flex: 1,
     borderRadius: 16,
-    padding: 20,
+    padding: 18,
     alignItems: "flex-end",
-    justifyContent: "space-between",
+    gap: 16,
+    minHeight: 130,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
     elevation: 2,
-  },
-  choiceCardA: {
-    backgroundColor: Colors.surfaceContainerLowest,
-  },
-  choiceCardB: {
-    backgroundColor: Colors.surfaceContainerLow,
+    justifyContent: "space-between",
   },
   choiceIcon: {
     width: 48,
@@ -339,14 +341,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   choiceLabel: {
-    fontSize: 16,
+    fontSize: 15,
     fontFamily: "Tajawal_700Bold",
     color: Colors.onSurface,
     textAlign: "right",
-  },
-  form: {
-    flex: 1,
-    gap: 16,
   },
   formCard: {
     backgroundColor: Colors.surfaceContainerLow,
@@ -355,12 +353,12 @@ const styles = StyleSheet.create({
     gap: 20,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
     elevation: 2,
   },
   fieldGroup: {
-    gap: 8,
+    gap: 6,
   },
   label: {
     fontSize: 14,
@@ -398,15 +396,13 @@ const styles = StyleSheet.create({
   codeWrap: {
     width: 80,
   },
-  codeInputWrapper: {
-    justifyContent: "center",
-  },
   codeText: {
     fontSize: 16,
     fontFamily: "Tajawal_500Medium",
     color: Colors.onSurface,
     textAlign: "center",
     paddingVertical: 12,
+    paddingHorizontal: 4,
   },
   errorText: {
     fontSize: 13,
@@ -417,7 +413,6 @@ const styles = StyleSheet.create({
   saveBtn: {
     borderRadius: 16,
     overflow: "hidden",
-    marginTop: 4,
     shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.25,
@@ -435,16 +430,6 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 18,
     fontFamily: "Tajawal_700Bold",
-  },
-  backBtn: {
-    alignItems: "center",
-    paddingVertical: 6,
-  },
-  backBtnText: {
-    fontSize: 15,
-    fontFamily: "Tajawal_500Medium",
-    color: Colors.onSurfaceVariant,
-    textDecorationLine: "underline",
   },
   infoBanner: {
     flexDirection: "row-reverse",
@@ -517,15 +502,5 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: "Tajawal_400Regular",
     color: Colors.onSurfaceVariant,
-  },
-  emptyContacts: {
-    alignItems: "center",
-    paddingTop: 80,
-    gap: 16,
-  },
-  emptyText: {
-    fontSize: 16,
-    fontFamily: "Tajawal_400Regular",
-    color: Colors.outline,
   },
 });

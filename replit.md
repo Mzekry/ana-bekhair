@@ -50,6 +50,29 @@ Every package extends `tsconfig.base.json` which sets `composite: true`. The roo
 
 ## Packages
 
+### `artifacts/tammen-app` (`@workspace/tammen-app`)
+
+React Native Expo mobile app: **"أنا بخير"** (Ana Bekhair) — an Arabic RTL safety check-in app.
+
+- **App name**: أنا بخير | Ana Bekhair
+- **Design**: Matches Stitch design from `attached_assets/stitch_1774711077399.zip`
+- **Colors**: Primary `#00796B` (teal), Secondary `#005faf` (blue), Surface `#f8fafa`
+- **Font**: Tajawal (Arabic) from `@expo-google-fonts/tajawal`
+- **Icons**: MaterialIcons from `@expo/vector-icons`
+- **Navigation**: Expo Router with 4-tab bottom nav (RTL: Settings, Alerts, Contacts, Home)
+- **Key screens**:
+  - `app/splash.tsx` — Animated splash with volunteer_activism icon
+  - `app/login.tsx` — Google sign-in + email login
+  - `app/onboarding.tsx` — First emergency contact setup
+  - `app/(tabs)/index.tsx` — Home: large "أنا بخير" check-in button + emergency alert
+  - `app/(tabs)/contacts.tsx` — Add/manage emergency contact
+  - `app/(tabs)/alerts.tsx` — Alerts (empty state for MVP1)
+  - `app/(tabs)/settings.tsx` — Profile, account settings, notifications, logout
+  - `app/edit-contact.tsx` — Edit contact modal
+- **State**: AsyncStorage via `contexts/AppContext.tsx` (user, contact, lastCheckIn)
+- **RTL**: Enforced via `I18nManager.forceRTL(true)` in root layout
+- `pnpm --filter @workspace/tammen-app run dev` — start Expo dev server
+
 ### `artifacts/api-server` (`@workspace/api-server`)
 
 Express 5 API server. Routes live in `src/routes/` and use `@workspace/api-zod` for request and response validation and `@workspace/db` for persistence.

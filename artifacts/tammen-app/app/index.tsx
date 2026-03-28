@@ -6,7 +6,7 @@ import Colors from "@/constants/colors";
 import { useApp } from "@/contexts/AppContext";
 
 export default function IndexScreen() {
-  const { user, contact, isLoading } = useApp();
+  const { user, isLoading } = useApp();
   const colors = Colors.light;
 
   if (isLoading) {
@@ -25,12 +25,8 @@ export default function IndexScreen() {
   }
 
   if (!user) {
-    return <Redirect href="/login" />;
+    return <Redirect href="/splash" />;
   }
 
-  if (!contact) {
-    return <Redirect href="/onboarding" />;
-  }
-
-  return <Redirect href="/home" />;
+  return <Redirect href="/(tabs)" />;
 }
