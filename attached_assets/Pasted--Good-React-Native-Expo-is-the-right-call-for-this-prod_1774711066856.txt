@@ -1,0 +1,319 @@
+🔥 Good — React Native (Expo) is the right call for this product. Faster, mobile-first, and your core features (call, notifications later) fit perfectly.
+
+Now I’ll adapt your functional PRD specifically for React Native (Expo) — clean, buildable, and aligned with MVP1.
+
+⸻
+
+📄 Functional PRD — Frontend (MVP1)
+
+Platform: React Native (Expo)
+
+⸻
+
+🧾 TL;DR
+
+Build a mobile app (iOS + Android) in Arabic (RTL) that allows a user to:
+	•	Log in (Google + Email)
+	•	Add 1 primary contact (Watcher)
+	•	Tap “أنا بخير” once per night
+	•	Call the watcher directly from the home screen
+
+👉 No SMS, no backend alerts yet — just behavior validation.
+
+⸻
+
+🧱 Tech Stack (Frontend)
+	•	React Native (Expo)
+	•	Expo Router (or React Navigation)
+	•	AsyncStorage (for local persistence)
+	•	Expo Contacts (for contact import)
+	•	Linking API (for phone calls)
+
+⸻
+
+📱 App Navigation Structure
+
+Login → Onboarding → Home → Settings
+
+
+⸻
+
+🔐 1. Login Screen
+
+Features:
+	•	Google Sign-In (Expo Google Auth)
+	•	Email input (basic for MVP)
+
+⸻
+
+UI (Arabic only):
+	•	Title: “طمّن أهلك”
+	•	Buttons:
+	•	“تسجيل عبر Google”
+	•	Email input + “متابعة”
+
+⸻
+
+Behavior:
+	•	First time → go to Onboarding
+	•	Returning user → go to Home
+
+⸻
+
+👤 2. Onboarding (Add Watcher)
+
+Goal:
+
+Add 1 primary contact (watcher)
+
+⸻
+
+UI Sections:
+
+A. Manual Input
+	•	Name input
+	•	Phone input
+
+⸻
+
+B. Import from Contacts
+
+Button:
+👉 “اختيار من جهات الاتصال”
+
+Behavior:
+	•	Request permission using:
+
+Contacts.requestPermissionsAsync()
+
+	•	If approved:
+	•	Show contact list
+	•	Select contact → auto-fill name + number
+
+⸻
+
+⚠️ Phone Validation (CRITICAL)
+
+Rules:
+	•	Must start with +
+	•	10–15 digits
+
+If invalid:
+👉 “رقم الهاتف غير صحيح”
+
+⸻
+
+Confirmation Step
+
+Before saving:
+
+الاسم: أحمد
+الرقم: +971501234567
+
+[تأكيد] [تعديل]
+
+
+⸻
+
+On Success:
+	•	Save to local storage
+	•	Navigate → Home
+
+⸻
+
+🏠 3. Home Screen (CORE)
+
+⸻
+
+Layout:
+
+1. Main Check-in Button
+
+Large button:
+
+👉 “أنا بخير”
+
+⸻
+
+Behavior:
+
+On press:
+
+const now = new Date();
+await AsyncStorage.setItem("lastCheckIn", now.toISOString());
+
+
+⸻
+
+Feedback:
+
+Show:
+
+👉 “تم تسجيل أنك بخير”
+
+(optional animation)
+
+⸻
+
+2. Last Check-in
+
+Display:
+
+👉 “آخر تسجيل: اليوم 10:45 مساءً”
+
+⸻
+
+3. Watcher Contact Section
+
+Display:
+	•	Name
+	•	Phone number
+
+⸻
+
+📞 Call Button (IMPORTANT)
+
+Button:
+👉 “اتصال”
+
+⸻
+
+Behavior:
+
+import * as Linking from 'expo-linking';
+
+Linking.openURL(`tel:${phoneNumber}`);
+
+
+⸻
+
+💥 This is your MVP emergency shortcut
+
+⸻
+
+➕ 4. Add/Edit Contact Screen
+	•	Same UI as onboarding
+	•	Allow updating:
+	•	Name
+	•	Phone
+
+⸻
+
+⚙️ 5. Settings Screen
+
+Features:
+	•	Edit contact
+	•	Logout
+	•	Reset data
+
+⸻
+
+🧠 State Management
+
+Use AsyncStorage for MVP:
+
+{
+  user: { name: "Ahmed" },
+  contact: {
+    name: "Ali",
+    phone: "+971501234567"
+  },
+  lastCheckIn: "ISO string"
+}
+
+
+⸻
+
+🌍 Arabic RTL Support (Global)
+
+In root:
+
+import { I18nManager } from 'react-native';
+
+I18nManager.forceRTL(true);
+
+
+⸻
+
+Styling Rules:
+	•	Align text right
+	•	Use Arabic fonts
+	•	Buttons full-width and large
+
+⸻
+
+⚠️ Edge Cases
+
+1. No contact exists
+
+→ Force onboarding
+
+⸻
+
+2. Contact missing phone
+
+→ Block save
+
+⸻
+
+3. Call fails
+
+→ Show alert:
+👉 “تعذر إجراء المكالمة”
+
+⸻
+
+🎯 UX Principles (VERY IMPORTANT)
+	•	1 tap check-in (no friction)
+	•	No unnecessary steps
+	•	Clear hierarchy
+	•	Fast response
+
+⸻
+
+🚫 Out of Scope (MVP1)
+	•	❌ SMS alerts
+	•	❌ Push notifications
+	•	❌ Multiple contacts
+	•	❌ Public emergency numbers
+	•	❌ Backend logic
+	•	❌ Country detection
+
+⸻
+
+🧪 What This Validates
+	•	Do users:
+	•	Add a watcher easily?
+	•	Use the app daily?
+	•	Understand the value?
+
+⸻
+
+🔥 My Product Opinion (important)
+
+You made a smart tradeoff:
+	•	Call button = immediate perceived value
+	•	Check-in = habit to validate
+
+👉 This combo is strong enough for MVP
+
+⸻
+
+👇 Next Step (this is where it gets interesting)
+
+Once this works, we need to decide:
+
+👉 How do we trigger alerts when user misses check-in?
+
+Options:
+	1.	Local background task ❌ unreliable
+	2.	Backend cron job ✅
+	3.	Firebase scheduled function ✅ fastest to launch
+
+⸻
+
+Before we go there:
+
+👉 Do you want the next step to be:
+A) Backend alert architecture (fast + cheap)
+B) Exact React Native component code (ready to paste into Replit)

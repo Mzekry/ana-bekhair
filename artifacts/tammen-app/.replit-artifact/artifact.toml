@@ -1,0 +1,27 @@
+kind = "mobile"
+previewPath = "/"
+title = "طمّن أهلك"
+version = "1.0.0"
+id = "artifacts/tammen-app"
+router = "expo-domain"
+
+[[integratedSkills]]
+name = "expo"
+version = "1.0.0"
+
+[[services]]
+ensurePreviewReachable = "/status"
+name = "expo"
+paths = [ "/" ]
+localPort = 24796
+
+[services.development]
+run = "pnpm --filter @workspace/tammen-app run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/tammen-app", "run", "build" ]
+run = [ "pnpm", "--filter", "@workspace/tammen-app", "run", "serve" ]
+
+[services.env]
+PORT = "24796"
+BASE_PATH = "/"
