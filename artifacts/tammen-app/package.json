@@ -57,6 +57,9 @@
   },
   "dependencies": {
     "@expo-google-fonts/tajawal": "^0.4.1",
-    "expo-contacts": "56.0.0-canary-20260305-5163746"
+    "@supabase/supabase-js": "^2.100.1",
+    "expo-auth-session": "56.0.0-canary-20260305-5163746",
+    "expo-contacts": "56.0.0-canary-20260305-5163746",
+    "expo-crypto": "56.0.0-canary-20260305-5163746"
   }
 }

@@ -7,12 +7,15 @@ import React, {
   useState,
 } from "react";
 
+import { isSupabaseConfigured, supabase } from "@/lib/supabase";
+
 export interface WatcherContact {
   name: string;
   phone: string;
 }
 
 export interface User {
+  id?: string;
   name: string;
   email: string;
 }
@@ -40,6 +43,16 @@ const STORAGE_KEYS = {
 
 const AppContext = createContext<AppContextValue | null>(null);
 
+function userFromSupabaseSession(session: { user: { id: string; email?: string; user_metadata?: Record<string, string> } }): User {
+  const meta = session.user.user_metadata ?? {};
+  const email = session.user.email ?? "";
+  const name =
+    meta.full_name ??
+    meta.name ??
+    (email ? email.split("@")[0] : "مستخدم");
+  return { id: session.user.id, name, email };
+}
+
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AppState>({
     user: null,
@@ -48,9 +61,53 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     isLoading: true,
   });
 
-  useEffect(() => {
-    loadStoredData();
+  const loadContactData = useCallback(async () => {
+    try {
+      const [contactStr, lastCheckIn] = await AsyncStorage.multiGet([
+        STORAGE_KEYS.CONTACT,
+        STORAGE_KEYS.LAST_CHECK_IN,
+      ]);
+      setState((prev) => ({
+        ...prev,
+        contact: contactStr[1] ? JSON.parse(contactStr[1]) : null,
+        lastCheckIn: lastCheckIn[1] ?? null,
+      }));
+    } catch {
+      // ignore
+    }
   }, []);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) {
+      loadStoredData();
+      return;
+    }
+
+    loadContactData();
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        setState((prev) => ({
+          ...prev,
+          user: userFromSupabaseSession(session),
+          isLoading: false,
+        }));
+      } else {
+        setState((prev) => ({ ...prev, isLoading: false }));
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setState((prev) => ({
+          ...prev,
+          user: session ? userFromSupabaseSession(session) : null,
+        }));
+      }
+    );
+
+    return () => subscription.unsubscribe();
+  }, [loadContactData]);
 
   const loadStoredData = async () => {
     try {
@@ -59,7 +116,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         STORAGE_KEYS.CONTACT,
         STORAGE_KEYS.LAST_CHECK_IN,
       ]);
-
       setState({
         user: userStr[1] ? JSON.parse(userStr[1]) : null,
         contact: contactStr[1] ? JSON.parse(contactStr[1]) : null,
@@ -72,10 +128,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const setUser = useCallback(async (user: User | null) => {
-    if (user) {
-      await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user));
-    } else {
-      await AsyncStorage.removeItem(STORAGE_KEYS.USER);
+    if (!isSupabaseConfigured) {
+      if (user) {
+        await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user));
+      } else {
+        await AsyncStorage.removeItem(STORAGE_KEYS.USER);
+      }
     }
     setState((prev) => ({ ...prev, user }));
   }, []);
@@ -96,11 +154,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
-    await AsyncStorage.removeItem(STORAGE_KEYS.USER);
+    if (isSupabaseConfigured) {
+      await supabase.auth.signOut();
+    } else {
+      await AsyncStorage.removeItem(STORAGE_KEYS.USER);
+    }
     setState((prev) => ({ ...prev, user: null }));
   }, []);
 
   const resetData = useCallback(async () => {
+    if (isSupabaseConfigured) {
+      await supabase.auth.signOut();
+    }
     await AsyncStorage.multiRemove([
       STORAGE_KEYS.USER,
       STORAGE_KEYS.CONTACT,
