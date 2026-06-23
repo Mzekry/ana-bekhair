@@ -1,6 +1,7 @@
 import { MaterialIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
+import analytics from "@react-native-firebase/analytics";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -131,7 +132,10 @@ export default function SettingsTab() {
           <View style={styles.menuRow}>
             <Switch
               value={notificationsEnabled}
-              onValueChange={setNotificationsEnabled}
+              onValueChange={(val) => {
+                setNotificationsEnabled(val);
+                analytics().logEvent("notifications_toggled", { is_enabled: val });
+              }}
               trackColor={{ false: Colors.outline, true: Colors.primary }}
               thumbColor="#fff"
             />

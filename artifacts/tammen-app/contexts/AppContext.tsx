@@ -1,4 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import analytics from "@react-native-firebase/analytics";
+import messaging from "@react-native-firebase/messaging";
 import React, {
   createContext,
   useCallback,
@@ -61,21 +63,77 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     isLoading: true,
   });
 
-  const loadContactData = useCallback(async () => {
+  const loadContactData = useCallback(async (currentUserId?: string) => {
+    let localContact: WatcherContact | null = null;
+    let localCheckIn: string | null = null;
+    
     try {
       const [contactStr, lastCheckIn] = await AsyncStorage.multiGet([
         STORAGE_KEYS.CONTACT,
         STORAGE_KEYS.LAST_CHECK_IN,
       ]);
-      setState((prev) => ({
-        ...prev,
-        contact: contactStr[1] ? JSON.parse(contactStr[1]) : null,
-        lastCheckIn: lastCheckIn[1] ?? null,
-      }));
+      localContact = contactStr[1] ? JSON.parse(contactStr[1]) : null;
+      localCheckIn = lastCheckIn[1] ?? null;
     } catch {
       // ignore
     }
+
+    if (isSupabaseConfigured && currentUserId) {
+      try {
+        const { data: contacts } = await supabase
+          .from("emergency_contacts")
+          .select("name, phone")
+          .eq("user_id", currentUserId)
+          .eq("is_active", true)
+          .order("created_at", { ascending: true })
+          .limit(1);
+
+        if (contacts && contacts.length > 0) {
+          localContact = contacts[0] as WatcherContact;
+        }
+
+        const { data: checkIns } = await supabase
+          .from("check_ins")
+          .select("checked_in_at")
+          .eq("user_id", currentUserId)
+          .order("checked_in_at", { ascending: false })
+          .limit(1);
+
+        if (checkIns && checkIns.length > 0) {
+          localCheckIn = checkIns[0].checked_in_at;
+        }
+      } catch (e) {
+        console.error("Error loading Supabase data:", e);
+      }
+    }
+
+    setState((prev) => ({
+      ...prev,
+      contact: localContact,
+      lastCheckIn: localCheckIn,
+    }));
   }, []);
+
+  const setupFirebase = async (userId: string) => {
+    try {
+      const authStatus = await messaging().requestPermission();
+      const enabled =
+        authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+        authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+
+      if (enabled) {
+        const token = await messaging().getToken();
+        await supabase
+          .from("user_settings")
+          .update({ push_token: token })
+          .eq("user_id", userId);
+      }
+      
+      await analytics().setUserId(userId);
+    } catch (e) {
+      console.error("Firebase setup error:", e);
+    }
+  };
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
@@ -83,26 +141,33 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    loadContactData();
-
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
-        setState((prev) => ({
+        const u = userFromSupabaseSession(session);
+        setState((prev: AppState) => ({
           ...prev,
-          user: userFromSupabaseSession(session),
+          user: u,
           isLoading: false,
         }));
+        loadContactData(u.id);
+        if (u.id) setupFirebase(u.id);
       } else {
-        setState((prev) => ({ ...prev, isLoading: false }));
+        setState((prev: AppState) => ({ ...prev, isLoading: false }));
+        loadContactData();
       }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
-        setState((prev) => ({
-          ...prev,
-          user: session ? userFromSupabaseSession(session) : null,
-        }));
+        if (session) {
+          const u = userFromSupabaseSession(session);
+          setState((prev: AppState) => ({ ...prev, user: u }));
+          loadContactData(u.id);
+          if (u.id) setupFirebase(u.id);
+        } else {
+          setState((prev: AppState) => ({ ...prev, user: null }));
+          loadContactData();
+        }
       }
     );
 
@@ -141,16 +206,57 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const setContact = useCallback(async (contact: WatcherContact | null) => {
     if (contact) {
       await AsyncStorage.setItem(STORAGE_KEYS.CONTACT, JSON.stringify(contact));
+      analytics().logEvent("contact_added", { method: "button" });
     } else {
       await AsyncStorage.removeItem(STORAGE_KEYS.CONTACT);
     }
-    setState((prev) => ({ ...prev, contact }));
+    
+    setState((prev: AppState) => {
+      const prevUser = prev.user;
+      if (isSupabaseConfigured && prevUser?.id) {
+        if (contact) {
+          // Deactivate old ones and insert new
+          supabase
+            .from("emergency_contacts")
+            .update({ is_active: false })
+            .eq("user_id", prevUser.id)
+            .then(() => {
+              supabase.from("emergency_contacts").insert({
+                user_id: prevUser.id,
+                name: contact.name,
+                phone: contact.phone,
+                is_active: true,
+              }).then();
+            });
+        } else {
+          // Remove active contacts
+          supabase
+            .from("emergency_contacts")
+            .update({ is_active: false })
+            .eq("user_id", prevUser.id)
+            .then();
+        }
+      }
+      return { ...prev, contact };
+    });
   }, []);
 
   const recordCheckIn = useCallback(async () => {
     const now = new Date().toISOString();
     await AsyncStorage.setItem(STORAGE_KEYS.LAST_CHECK_IN, now);
-    setState((prev) => ({ ...prev, lastCheckIn: now }));
+    analytics().logEvent("check_in_button_pressed", { method: "button" });
+    
+    setState((prev: AppState) => {
+      const prevUser = prev.user;
+      if (isSupabaseConfigured && prevUser?.id) {
+        supabase.from("check_ins").insert({
+          user_id: prevUser.id,
+          checked_in_at: now,
+          method: "button"
+        }).then();
+      }
+      return { ...prev, lastCheckIn: now };
+    });
   }, []);
 
   const logout = useCallback(async () => {

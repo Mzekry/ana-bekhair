@@ -1,6 +1,7 @@
 import { MaterialIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as Linking from "expo-linking";
+import analytics from "@react-native-firebase/analytics";
 import { router } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -96,6 +97,7 @@ export default function HomeTab() {
 
   const handleCall = async () => {
     if (!contact?.phone) return;
+    analytics().logEvent("call_contact_pressed");
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     const url = `tel:${contact.phone}`;
     const canOpen = await Linking.canOpenURL(url);
@@ -107,6 +109,7 @@ export default function HomeTab() {
   };
 
   const handleEmergency = async () => {
+    analytics().logEvent("emergency_alert_triggered", { location_shared: false });
     await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     Alert.alert(
       "تنبيه طوارئ",

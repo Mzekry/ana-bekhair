@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "452357038163",
+    "project_id": "i-m-ok-66655",
+    "storage_bucket": "i-m-ok-66655.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:452357038163:android:bbf14396f860e89a3a66a6",
+        "android_client_info": {
+          "package_name": "com.lifekit.imok"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAatfEvlcAbk_33Qb6Tr5uWaSJaoX_fAMs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

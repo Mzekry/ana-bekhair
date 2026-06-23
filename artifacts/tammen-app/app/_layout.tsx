@@ -17,6 +17,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AppProvider } from "@/contexts/AppContext";
 
+I18nManager.allowRTL(true);
 I18nManager.forceRTL(true);
 
 SplashScreen.preventAutoHideAsync();

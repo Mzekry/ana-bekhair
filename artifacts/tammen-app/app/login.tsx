@@ -1,6 +1,7 @@
 import { MaterialIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as Linking from "expo-linking";
+import analytics from "@react-native-firebase/analytics";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
@@ -90,6 +91,7 @@ export default function LoginScreen() {
           }
           return;
         }
+        analytics().logLogin({ method: "email" });
         navigateAfterLogin();
       } else {
         const { error } = await supabase.auth.signUp({
@@ -100,6 +102,7 @@ export default function LoginScreen() {
           Alert.alert("خطأ في إنشاء الحساب", error.message);
           return;
         }
+        analytics().logSignUp({ method: "email" });
         Alert.alert(
           "تحقق من بريدك",
           "تم إرسال رابط تأكيد إلى بريدك الإلكتروني. يرجى تفعيل حسابك ثم تسجيل الدخول.",
@@ -145,6 +148,7 @@ export default function LoginScreen() {
         if (code) {
           const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
           if (!exchangeError) {
+            analytics().logLogin({ method: "google" });
             navigateAfterLogin();
             return;
           }
@@ -160,6 +164,7 @@ export default function LoginScreen() {
             refresh_token: refreshToken,
           });
           if (!sessionError) {
+            analytics().logLogin({ method: "google" });
             navigateAfterLogin();
           }
         }

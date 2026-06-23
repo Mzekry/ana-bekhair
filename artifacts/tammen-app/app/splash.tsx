@@ -1,9 +1,9 @@
-import { MaterialIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useEffect, useRef } from "react";
 import {
   Animated,
+  Image,
   Platform,
   StyleSheet,
   Text,
@@ -82,23 +82,11 @@ export default function SplashAnimationScreen() {
             },
           ]}
         >
-          <View style={styles.iconOuter}>
-            <LinearGradient
-              colors={[Colors.primary, Colors.primaryContainer]}
-              style={styles.iconInner}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <MaterialIcons
-                name="volunteer-activism"
-                size={56}
-                color="#fff"
-              />
-            </LinearGradient>
-          </View>
-          <View style={styles.checkBadge}>
-            <MaterialIcons name="check-circle" size={22} color={Colors.secondary} />
-          </View>
+          <Image
+            source={require("../assets/images/icon.png")}
+            style={styles.iconImage}
+            resizeMode="contain"
+          />
         </Animated.View>
 
         <Animated.View style={{ opacity: fadeAnim, alignItems: "center", gap: 8 }}>
@@ -151,42 +139,10 @@ const styles = StyleSheet.create({
     position: "relative",
     marginBottom: 8,
   },
-  iconOuter: {
-    width: 140,
-    height: 140,
-    borderRadius: 40,
-    backgroundColor: "rgba(255,255,255,0.5)",
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 16 },
-    shadowOpacity: 0.2,
-    shadowRadius: 30,
-    elevation: 12,
-  },
-  iconInner: {
-    width: 100,
-    height: 100,
-    borderRadius: 30,
-    alignItems: "center",
-    justifyContent: "center",
-    transform: [{ rotate: "-3deg" }],
-  },
-  checkBadge: {
-    position: "absolute",
-    bottom: -6,
-    left: -6,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.9)",
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 4,
+  iconImage: {
+    width: 150,
+    height: 150,
+    borderRadius: 34,
   },
   title: {
     fontSize: 42,
