@@ -185,7 +185,7 @@ export default function EditContactScreen() {
           </View>
           <FlatList
             data={contactsList}
-            keyExtractor={(item) => item.id ?? Math.random().toString()}
+            keyExtractor={(_item, index) => String(index)}
             renderItem={({ item }) => (
               <TouchableOpacity
                 style={styles.contactRow}

@@ -35,10 +35,12 @@ minimumReleaseAgeExclude:
   - stripe-replit-sync
 
 packages:
-  - artifacts/*
-  - lib/*
-  - lib/integrations/*
-  - scripts
+  # Scoped to the mobile app that gets built into the Android/iOS binary.
+  # The other Replit artifacts (api-server, mockup-sandbox) and shared libs
+  # are intentionally excluded so the build service's recursive install/build
+  # (`pnpm -r ...`) doesn't try to build unrelated web/server packages whose
+  # deps aren't installed on the build runner (e.g. "vite: not found").
+  - artifacts/tammen-app
 
 catalog:
   '@replit/vite-plugin-cartographer': ^0.5.1
