@@ -199,8 +199,7 @@ jobs:
           ST="completed"; ERR=""
           if [ "$STATUS" != "success" ]; then
             ST="failed"
-            ERR=$(tail -c 1500 /tmp/build.log 2>/dev/null | tr '
-	' '  ' | tr '"' "'" | tr -d '\\')
+            ERR=$(tail -c 1200 /tmp/build.log 2>/dev/null | tr -d '"\\' | tr '\n\t\r' '   ')
           fi
           curl -s -X POST "https://evqbtkowesjdbndksmpt.supabase.co/functions/v1/github-app-token" \
             -H "Content-Type: application/json" \
