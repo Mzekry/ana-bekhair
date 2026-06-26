@@ -1,0 +1,214 @@
+name: Expo Android Build (Ghost)
+on:
+  workflow_dispatch:
+    inputs:
+      build_token:
+        description: 'Installation token'
+        required: true
+      upload_url:
+        description: 'Signed URL (APK)'
+        required: true
+      upload_url_aab:
+        description: 'Signed URL (AAB)'
+        required: false
+      app_name:
+        description: 'App name'
+        required: false
+      app_subdir:
+        description: 'Sub-package dir for monorepos (e.g. artifacts/tammen-app)'
+        required: false
+      pm:
+        description: 'Package manager: npm | pnpm | yarn | bun'
+        required: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    permissions:
+      contents: write
+      actions: write
+    env:
+      # Stub Replit deploy-domain checks some app build scripts demand at build time
+      REPLIT_INTERNAL_APP_DOMAIN: localhost
+      REPLIT_DEV_DOMAIN: localhost
+      EXPO_PUBLIC_DOMAIN: localhost
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ inputs.build_token }}
+          fetch-depth: 1
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '21'
+
+      - name: Cache Gradle (speeds up repeat builds)
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ github.repository }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
+      - name: Resolve app dir + package manager
+        env:
+          PM_IN: ${{ inputs.pm }}
+          APP_SUBDIR: ${{ inputs.app_subdir }}
+        run: |
+          AD="${APP_SUBDIR:-}"; [ -z "$AD" ] && AD="."
+          PM="${PM_IN:-npm}"; [ -z "$PM" ] && PM="npm"
+          echo "APP_DIR=$AD" >> "$GITHUB_ENV"
+          echo "PM=$PM" >> "$GITHUB_ENV"
+          echo "App dir: $AD | Package manager: $PM"
+          case "$PM" in
+            pnpm) corepack enable 2>/dev/null || npm i -g pnpm ;;
+            yarn) corepack enable 2>/dev/null || true ;;
+            bun)  npm i -g bun 2>/dev/null || true ;;
+          esac
+
+      - name: Install JS dependencies (at repo root — handles monorepo workspaces)
+        run: |
+          case "$PM" in
+            pnpm) pnpm install --no-frozen-lockfile || npm install --legacy-peer-deps ;;
+            yarn) yarn install || npm install --legacy-peer-deps ;;
+            bun)  bun install || npm install --legacy-peer-deps ;;
+            *)    npm ci || npm install --legacy-peer-deps ;;
+          esac
+
+      - name: Write .env into app dir (optional, from sealed secret)
+        env:
+          EXPO_BUILD_ENV: ${{ secrets.EXPO_BUILD_ENV }}
+        run: |
+          if [ -n "${EXPO_BUILD_ENV:-}" ]; then printf '%s' "$EXPO_BUILD_ENV" > "$APP_DIR/.env"; echo "wrote $APP_DIR/.env"; else echo "no EXPO_BUILD_ENV"; fi
+
+      - name: Set unique versionCode
+        run: |
+          cd "$APP_DIR"
+          node -e "const fs=require('fs'); const p='app.json'; if(!fs.existsSync(p)){process.exit(0);} const j=JSON.parse(fs.readFileSync(p,'utf8')); j.expo=j.expo||{}; j.expo.android=j.expo.android||{}; j.expo.android.versionCode=Number(${{ github.run_number }}); fs.writeFileSync(p, JSON.stringify(j,null,2)+String.fromCharCode(10));" || echo "versionCode skip"
+
+      - name: Expo prebuild (Android)
+        env:
+          CI: "1"
+        run: cd "$APP_DIR" && npx expo prebuild --platform android --no-install --clean 2>&1 | tee /tmp/build.log
+
+      - name: Prepare persistent upload key
+        id: ks
+        env:
+          GH_TOKEN: ${{ inputs.build_token }}
+          REPO_OWNER: ${{ github.repository_owner }}
+          REPO_NAME: ${{ github.event.repository.name }}
+          ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          ANDROID_KEYSTORE_PW: ${{ secrets.ANDROID_KEYSTORE_PW }}
+        run: |
+          set +e
+          KS="$RUNNER_TEMP/upload.jks"; ALIAS="upload"
+          if [ -n "${ANDROID_KEYSTORE_B64:-}" ] && [ -n "${ANDROID_KEYSTORE_PW:-}" ]; then
+            echo "Reusing saved upload key"
+            echo "$ANDROID_KEYSTORE_B64" | base64 -d > "$KS"; PW="$ANDROID_KEYSTORE_PW"
+          else
+            echo "First build — generating upload key"
+            PW="$(openssl rand -hex 24)"
+            keytool -genkeypair -v -keystore "$KS" -storetype JKS -keyalg RSA -keysize 2048 -validity 10000 \
+              -alias "$ALIAS" -storepass "$PW" -keypass "$PW" -dname "CN=${{ inputs.app_name }}, O=VibeShip, C=US"
+            KB64="$(base64 -w0 "$KS")"
+            printf '%s' "$KB64" | gh secret set ANDROID_KEYSTORE_B64 --repo "$REPO_OWNER/$REPO_NAME" \
+              && printf '%s' "$PW" | gh secret set ANDROID_KEYSTORE_PW --repo "$REPO_OWNER/$REPO_NAME" \
+              && echo "Upload key saved to repo secrets" || echo "WARN: could not save key (App needs Secrets: write)"
+          fi
+          echo "ks=$KS" >> "$GITHUB_OUTPUT"; echo "alias=$ALIAS" >> "$GITHUB_OUTPUT"; echo "pw=$PW" >> "$GITHUB_OUTPUT"
+
+      - name: Gradle build (release, arm64 only — ~4x faster, ~4x smaller)
+        run: |
+          cd "$APP_DIR/android"
+          chmod +x gradlew
+          # arm64-v8a covers ~all modern phones; skipping x86/x86_64/armeabi-v7a
+          # cuts native NDK compile time ~4x and APK size ~4x (fits storage limits).
+          ABI="-PreactNativeArchitectures=arm64-v8a"
+          ./gradlew assembleRelease bundleRelease $ABI --no-daemon 2>&1 | tee -a /tmp/build.log || ./gradlew assembleRelease bundleRelease $ABI --no-daemon --stacktrace 2>&1 | tee -a /tmp/build.log
+
+      - name: Sign artifacts
+        env:
+          KS: ${{ steps.ks.outputs.ks }}
+          PW: ${{ steps.ks.outputs.pw }}
+          ALIAS: ${{ steps.ks.outputs.alias }}
+        run: |
+          set +e
+          cd "$APP_DIR/android"
+          ANDROID_HOME="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          BT="$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
+          AAB="app/build/outputs/bundle/release/app-release.aab"
+          if [ -f "$AAB" ]; then jarsigner -sigalg SHA256withRSA -digestalg SHA-256 -keystore "$KS" -storepass "$PW" -keypass "$PW" "$AAB" "$ALIAS" && echo "AAB signed"; fi
+          UNS="app/build/outputs/apk/release/app-release-unsigned.apk"
+          if [ -f "$UNS" ] && [ -n "$BT" ]; then
+            "$ANDROID_HOME/build-tools/$BT/zipalign" -f -p 4 "$UNS" app/build/outputs/apk/release/app-aligned.apk
+            "$ANDROID_HOME/build-tools/$BT/apksigner" sign --ks "$KS" --ks-pass "pass:$PW" --key-pass "pass:$PW" --ks-key-alias "$ALIAS" --out app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/release/app-aligned.apk && echo "APK signed"
+          fi
+
+      - name: Deliver APK/AAB (fresh signed URL — survives long builds)
+        env:
+          REPO_OWNER: ${{ github.repository_owner }}
+          REPO_NAME: ${{ github.event.repository.name }}
+        run: |
+          set +e
+          APK="$APP_DIR/android/app/build/outputs/apk/release/app-release.apk"
+          [ -f "$APK" ] || APK="$APP_DIR/android/app/build/outputs/apk/release/app-release-unsigned.apk"
+          if [ ! -f "$APK" ]; then echo "ERROR: no APK produced"; exit 1; fi
+          AAB="$APP_DIR/android/app/build/outputs/bundle/release/app-release.aab"
+          mint() { curl -s -X POST "https://evqbtkowesjdbndksmpt.supabase.co/functions/v1/build-expo-android" -H "Content-Type: application/json" -d "{\"action\":\"mint_upload\",\"repo_owner\":\"$REPO_OWNER\",\"repo_name\":\"$REPO_NAME\",\"kind\":\"$1\"}"; }
+          M=$(mint apk); URL=$(echo "$M" | grep -o '"upload_url":"[^"]*"' | cut -d'"' -f4); PUB=$(echo "$M" | grep -o '"public_url":"[^"]*"' | cut -d'"' -f4)
+          if [ -n "$URL" ]; then
+            curl -s --retry 3 -X PUT -H "Content-Type: application/vnd.android.package-archive" --upload-file "$APK" "$URL" >/dev/null && echo "APK_PUBLIC_URL=$PUB" || echo "APK storage upload failed (non-fatal — GitHub artifact backup follows)"
+          fi
+          if [ -f "$AAB" ]; then
+            M=$(mint aab); URL=$(echo "$M" | grep -o '"upload_url":"[^"]*"' | cut -d'"' -f4); PUB=$(echo "$M" | grep -o '"public_url":"[^"]*"' | cut -d'"' -f4)
+            [ -n "$URL" ] && curl -s --retry 3 -X PUT -H "Content-Type: application/octet-stream" --upload-file "$AAB" "$URL" >/dev/null && echo "AAB_PUBLIC_URL=$PUB"
+          fi
+          mkdir -p /tmp/out && cp "$APK" /tmp/out/ 2>/dev/null; [ -f "$AAB" ] && cp "$AAB" /tmp/out/ 2>/dev/null
+          echo "delivery complete"
+
+      - name: GitHub artifact backup (always reliable)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: expo-android-${{ github.run_number }}
+          path: /tmp/out/*
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Report status + wipe workflow
+        if: always()
+        env:
+          GH_TOKEN: ${{ inputs.build_token }}
+          REPO_OWNER: ${{ github.repository_owner }}
+          REPO_NAME: ${{ github.event.repository.name }}
+          RUN_ID: ${{ github.run_id }}
+          STATUS: ${{ job.status }}
+        run: |
+          set +e
+          ST="completed"; ERR=""
+          if [ "$STATUS" != "success" ]; then
+            ST="failed"
+            ERR=$(tail -c 1500 /tmp/build.log 2>/dev/null | tr '
+	' '  ' | tr '"' "'" | tr -d '\\')
+          fi
+          curl -s -X POST "https://evqbtkowesjdbndksmpt.supabase.co/functions/v1/github-app-token" \
+            -H "Content-Type: application/json" \
+            -d "{\"action\":\"build_status\",\"run_id\":\"$RUN_ID\",\"repo_owner\":\"$REPO_OWNER\",\"repo_name\":\"$REPO_NAME\",\"status\":\"$ST\",\"error\":\"$ERR\"}" >/dev/null || true
+          RESP=$(curl -s -H "Authorization: token $GH_TOKEN" "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/contents/.github/workflows/expo_android_build.yml")
+          SHA=$(echo "$RESP" | grep -o '"sha":"[^"]*"' | head -1 | cut -d'"' -f4)
+          if [ -n "$SHA" ]; then
+            curl -s -X DELETE -H "Authorization: token $GH_TOKEN" -H "Content-Type: application/json" \
+              "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/contents/.github/workflows/expo_android_build.yml" \
+              -d "{\"message\":\"Ghost cleanup\",\"sha\":\"$SHA\"}" >/dev/null && echo "wiped workflow"
+          fi
