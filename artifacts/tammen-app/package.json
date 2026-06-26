@@ -5,11 +5,12 @@
   "main": "expo-router/entry",
   "scripts": {
     "dev": "EXPO_PACKAGER_PROXY_URL=https://$REPLIT_EXPO_DEV_DOMAIN EXPO_PUBLIC_DOMAIN=$REPLIT_DEV_DOMAIN EXPO_PUBLIC_REPL_ID=$REPL_ID REACT_NATIVE_PACKAGER_HOSTNAME=$REPLIT_DEV_DOMAIN pnpm exec expo start --localhost --port $PORT",
-    "build": "node scripts/build.js",
+    "build": "expo export --platform web --output-dir dist",
+    "cap:sync": "cap sync android",
+    "build:android": "expo export --platform web --output-dir dist && cap sync android",
+    "cap:open": "cap open android",
     "serve": "node server/serve.js",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
-    "android": "expo run:android",
-    "ios": "expo run:ios"
+    "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
@@ -58,6 +59,9 @@
     "zod-validation-error": "^3.4.0"
   },
   "dependencies": {
+    "@capacitor/android": "^7.6.7",
+    "@capacitor/cli": "^7.6.7",
+    "@capacitor/core": "^7.6.7",
     "@expo-google-fonts/tajawal": "^0.4.1",
     "@react-native-firebase/analytics": "^23.8.8",
     "@react-native-firebase/app": "^23.8.8",

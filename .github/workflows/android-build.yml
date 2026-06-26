@@ -1,12 +1,11 @@
-name: Android Build (Expo)
+name: Android Build (Capacitor)
 
-# Real native Expo Android build: `expo prebuild` generates the android/
-# project from app.json + config plugins, then Gradle compiles a standalone,
-# JS-bundled APK. This is what the Vite-based service could not do.
+# Packages the app as a Capacitor WebView APK:
+#   1. expo export --platform web  -> static dist/ (flat, index.html at root)
+#   2. cap sync android            -> copies dist/ into the Android project
+#   3. gradlew assembleDebug       -> installable APK (debug-signed)
 #
-# Output: an installable release APK signed with Expo's default debug keystore
-# (good for testing / sideloading). For a Play Store AAB you'll later add a real
-# keystore as a secret and switch to bundleRelease — see the commented step.
+# No native Expo/RN compilation, no SSR, no build-time env vars.
 
 on:
   workflow_dispatch: {}
@@ -15,6 +14,8 @@ on:
     paths:
       - "artifacts/tammen-app/**"
       - ".github/workflows/android-build.yml"
+      - "package.json"
+      - "pnpm-lock.yaml"
 
 jobs:
   build-android:
@@ -22,48 +23,46 @@ jobs:
     defaults:
       run:
         working-directory: artifacts/tammen-app
-    env:
-      # Public Expo env (anon keys, already committed in eas.json) so the
-      # release JS bundle has them baked in.
-      EXPO_PUBLIC_SUPABASE_URL: https://huespjdrujyuebsbtfic.supabase.co
-      EXPO_PUBLIC_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh1ZXNwamRydWp5dWVic2J0ZmljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3MTQzNzEsImV4cCI6MjA5MDI5MDM3MX0.MTOV7YP7KqLD9g-xuAW8ysy_mXG93x0g1P1LoPuARCg
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup JDK 17
+      - name: Setup JDK 21
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: "21"
 
-      - name: Setup Node 20
+      - name: Setup Node 20 + pnpm
         uses: actions/setup-node@v4
         with:
           node-version: "20"
 
+      - name: Enable pnpm
+        run: corepack enable
+        working-directory: .
+
+      - name: Install dependencies
+        run: pnpm install
+        working-directory: .
+
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install app dependencies (npm, flat node_modules for RN autolinking)
-        run: npm install --no-audit --no-fund
+      - name: Build static web export
+        run: pnpm run build
 
-      - name: Expo prebuild (generate android/ project)
-        run: npx expo prebuild --platform android --no-install
+      - name: Sync web assets into Android (Capacitor)
+        run: pnpm exec cap sync android
 
-      - name: Gradle assembleRelease (standalone, JS-bundled APK)
+      - name: Gradle assembleDebug (installable APK)
         working-directory: artifacts/tammen-app/android
-        run: ./gradlew assembleRelease --no-daemon --stacktrace
-
-      # --- Play Store AAB (enable once you add a real keystore secret) ---
-      # - name: Gradle bundleRelease (AAB)
-      #   working-directory: artifacts/tammen-app/android
-      #   run: ./gradlew bundleRelease --no-daemon
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ana-bekhair-android-apk
-          path: artifacts/tammen-app/android/app/build/outputs/apk/release/*.apk
+          name: ana-bekhair-capacitor-apk
+          path: artifacts/tammen-app/android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error

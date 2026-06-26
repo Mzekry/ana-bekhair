@@ -36,15 +36,12 @@
       ]
     },
     "web": {
-      "favicon": "./assets/images/icon.png"
+      "favicon": "./assets/images/icon.png",
+      "bundler": "metro",
+      "output": "single"
     },
     "plugins": [
-      [
-        "expo-router",
-        {
-          "origin": "https://replit.com/"
-        }
-      ],
+      "expo-router",
       "expo-font",
       "expo-web-browser",
       "expo-contacts",
@@ -63,9 +60,6 @@
     "extra": {
       "eas": {
         "projectId": "f60c1b66-fa57-48ee-b6d0-2e1566207272"
-      },
-      "router": {
-        "origin": "https://replit.com/"
       }
     }
   }

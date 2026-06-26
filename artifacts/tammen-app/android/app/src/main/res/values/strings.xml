@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Ana Bekhair</string>
+    <string name="title_activity_main">Ana Bekhair</string>
+    <string name="package_name">com.lifekit.im_ok</string>
+    <string name="custom_url_scheme">com.lifekit.im_ok</string>
+</resources>
