@@ -80,7 +80,14 @@ jobs:
       - name: Install JS dependencies (at repo root — handles monorepo workspaces)
         run: |
           case "$PM" in
-            pnpm) pnpm install --no-frozen-lockfile || npm install --legacy-peer-deps ;;
+            pnpm)
+              # RN/Expo need a FLAT node_modules. pnpm's symlinked store hides
+              # transitive deps (e.g. babel-preset-expo) from Metro/Babel, breaking
+              # the JS bundle step. Force hoisting so resolution works like npm.
+              printf 'node-linker=hoisted
+shamefully-hoist=true
+' >> .npmrc
+              pnpm install --no-frozen-lockfile --node-linker=hoisted || pnpm install --no-frozen-lockfile || npm install --legacy-peer-deps ;;
             yarn) yarn install || npm install --legacy-peer-deps ;;
             bun)  bun install || npm install --legacy-peer-deps ;;
             *)    npm ci || npm install --legacy-peer-deps ;;
